@@ -19,7 +19,7 @@
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
 (def verbose? true)
-(def num-bits 16) ; 20 => 37 sec
+(def num-bits 16) ; 20 bits => 37 sec (4 bits min)
 (def num-rounds 3)
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
