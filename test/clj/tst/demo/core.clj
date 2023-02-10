@@ -1,11 +1,10 @@
 (ns tst.demo.core
   (:use demo.core tupelo.core tupelo.test)
   (:require
+    [com.climate.claypoole :as cp]
     [tupelo.math :as math]
     [tupelo.profile :as prof]
-    )
-  (:import
-    [java.math BigInteger]))
+    ))
 
 (set! *warn-on-reflection* true)
 
@@ -39,12 +38,13 @@
   (newline)
   (if (< N-max (math/pow-long 2 21))
     (do
-      (println "Running integer coverage test...")
+      (println "Running integer coverage test (parallel)...")
       (prof/with-timer-print :coverage
         (let [nums-orig     (range N-max)
-              nums-shuffled (vec (pmap idx-shuffle nums-orig))]
+              nums-shuffled (cp/pmap :builtin idx-shuffle nums-orig)]
           (is-set= nums-orig nums-shuffled))))
     ; else
     (print "Skipping integer coverage test."))
   (newline)
   )
+

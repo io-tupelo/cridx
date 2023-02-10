@@ -22,8 +22,8 @@
 (def verbose? true)
 
 ; vvv This must be 4 bits minimum
-(def num-bits 32) ; 20 bits => 10 sec/round (ie 1M items)
-(def num-rounds 3)
+(def num-bits 20) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
+(def num-rounds 3) ; must be non-zero!
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
 (def num-hex-digits (long (Math/ceil (/ num-bits 4)))) ; (log2 16) => 4
@@ -73,6 +73,7 @@
 
 ;-----------------------------------------------------------------------------
 ; sanity checks
+(assert (pos-int? num-rounds))
 (assert (biginteger? offset))
 (assert (biginteger? increment))
 (when-not (odd? increment) ; odd => relatively prime to 2^N
@@ -120,12 +121,12 @@
         x5 (shuffle-bits x4)]
     x5))
 
-; timing: approx 10 microsec/call/round (30 sec per 2^20 integers, num-rounds=3)
+; timing: approx 25 microsec/call (num-rounds=3) (25 sec per 2^20 integers)
 (s/defn idx-shuffle :- BigInteger
   [idx :- s/Int]
   (biginteger
     (nth
-      (iterate idx-shuffle-round idx) ; #todo this looks wrong...?
-      (inc num-rounds))))
+      (iterate idx-shuffle-round idx) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
+      num-rounds))) ;
 
 

@@ -5,6 +5,7 @@
                  [org.clojure/clojure "1.11.1"]
                  [prismatic/schema "1.2.1"]
                  [tupelo "22.05.04"]
+                 [org.clj-commons/claypoole "1.2.2"]
                  ]
   :plugins [
             [com.jakemccrary/lein-test-refresh "0.25.0"]
