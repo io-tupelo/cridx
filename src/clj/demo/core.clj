@@ -14,12 +14,15 @@
 ;  - next-int
 ;  - next-hex
 ;
-; CRUID - Cipher Random Unique ID
+; new:  CRIDX - Cipher Random Index
+; old:  CRUID - Cipher Random Unique ID
 
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
 (def verbose? true)
-(def num-bits 16) ; 20 bits => 37 sec (4 bits min)
+
+; vvv This must be 4 bits minimum
+(def num-bits 32) ; 20 bits => 10 sec/round (ie 1M items)
 (def num-rounds 3)
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
@@ -30,8 +33,21 @@
 (spyx num-bits)
 (spyx N-max)
 
+; #todo -> tupelo.math (incl unit tests)
+(s/defn BigInteger->bitstr  :- s/Str
+  [N :- s/Int
+   width :- s/Int]
+  (let [bitstr-raw  (.toString (biginteger N) 2)
+        extra-chars (- width (count bitstr-raw))
+        >>          (assert (int-nonneg? extra-chars))
+        result      (strcat (repeat extra-chars \0) bitstr-raw)]
+    result))
+
 (when-not (<= 4 num-bits 160)
   (throw (ex-info "num-bits out of range [4..120]" (vals->map num-bits))))
+
+;-----------------------------------------------------------------------------
+; initialization
 
 (def seed 777717777)
 (def random
@@ -45,15 +61,18 @@
               (biginteger it)))
 
 (def increment ; ***** MUST BE ODD *****
-  (it-> (.nextDouble random)
-    (* it N-third)
-    (+ it N-third)
-    (biginteger it)
-    (if (even? it) ; ensure it is odd
-        (.add ^BigInteger it (biginteger 1))
-        it)
-    (biginteger it)))
+  (biginteger
+    (it-> (.nextDouble random)
+      (* it N-third)
+      (+ it N-third)
+      (biginteger it)
+      (if (even? it) ; ensure it is odd
+          (.add ^BigInteger it (biginteger 1))
+          it)
+      )))
 
+;-----------------------------------------------------------------------------
+; sanity checks
 (assert (biginteger? offset))
 (assert (biginteger? increment))
 (when-not (odd? increment) ; odd => relatively prime to 2^N
@@ -62,6 +81,7 @@
 (spyx [offset (math/BigInteger->binary-str offset)])
 (spyx [increment (math/BigInteger->binary-str increment)])
 
+;-----------------------------------------------------------------------------
 (def bit-order
   (let [K            (Math/round (Math/sqrt num-bits))
         bit-seqs     (partition-all K (range num-bits))
@@ -89,7 +109,6 @@
         result            (math/binary-chars->BigInteger bits-out)]
     result))
 
-; timing: approx 8 microsec/call (8 sec per 2^20)
 (s/defn ^:no-doc idx-shuffle-round :- BigInteger
   [idx :- s/Int]
   (when-not (and (<= 0 idx) (< idx N-max))
@@ -101,11 +120,12 @@
         x5 (shuffle-bits x4)]
     x5))
 
+; timing: approx 10 microsec/call/round (30 sec per 2^20 integers, num-rounds=3)
 (s/defn idx-shuffle :- BigInteger
   [idx :- s/Int]
   (biginteger
     (nth
-      (iterate idx-shuffle-round idx)
+      (iterate idx-shuffle-round idx) ; #todo this looks wrong...?
       (inc num-rounds))))
 
 
