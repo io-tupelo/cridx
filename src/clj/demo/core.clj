@@ -51,7 +51,8 @@
     (biginteger it)
     (if (even? it) ; ensure it is odd
         (.add ^BigInteger it (biginteger 1))
-        it)))
+        it)
+    (biginteger it)))
 
 (assert (biginteger? offset))
 (assert (biginteger? increment))
