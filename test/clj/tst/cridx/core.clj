@@ -1,5 +1,5 @@
-(ns tst.demo.core
-  (:use demo.core tupelo.core tupelo.test)
+(ns tst.cridx.core
+  (:use cridx.core tupelo.core tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
     [tupelo.math :as math]
@@ -37,14 +37,14 @@
 
   (newline)
   (if (< N-max (math/pow-long 2 21))
-    (do
+    (do   ; then
       (println "Running integer coverage test (parallel)...")
-      (prof/with-timer-print :coverage
+      (newline)
+      (prof/with-timer-print :coverage-test
         (let [nums-orig     (range N-max)
               nums-shuffled (cp/pmap :builtin idx-shuffle nums-orig)]
           (is-set= nums-orig nums-shuffled))))
-    ; else
-    (print "Skipping integer coverage test."))
-  (newline)
-  )
+    (do  ; else
+      (print "Skipping integer coverage test.")
+      (newline))))
 

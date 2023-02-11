@@ -1,4 +1,4 @@
-(defproject io-tupelo/cruid "0.1.0-SNAPSHOT"
+(defproject io-tupelo/cridx "0.1.0-SNAPSHOT"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [
@@ -13,7 +13,7 @@
             ]
 
   :global-vars {*warn-on-reflection* false}
-  :main ^:skip-aot demo.core
+  :main ^:skip-aot cridx.core
 
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
