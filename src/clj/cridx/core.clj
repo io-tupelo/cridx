@@ -66,8 +66,7 @@
       (biginteger it)
       (if (even? it) ; ensure it is odd
           (.add ^BigInteger it (biginteger 1))
-          it)
-      )))
+          it))))
 
 ;-----------------------------------------------------------------------------
 ; sanity checks
@@ -81,7 +80,7 @@
 (spyx [increment (math/BigInteger->binary-str increment)])
 
 ;-----------------------------------------------------------------------------
-(def bit-order
+(def ^:no-doc bit-order
   (let [K            (Math/round (Math/sqrt num-bits))
         bit-seqs     (partition-all K (range num-bits))
         bit-seqs-rev (forv [[i bit-seq] (indexed bit-seqs)]
@@ -93,7 +92,7 @@
     result))
 (spyx bit-order)
 
-(s/defn shuffle-bits :- BigInteger
+(s/defn ^:no-doc shuffle-bits :- BigInteger
   [arg :- BigInteger]
   (when-not (and (<= 0 arg) (< arg N-max))
     (throw (ex-info "arg out of range" (vals->map arg N-max))))
