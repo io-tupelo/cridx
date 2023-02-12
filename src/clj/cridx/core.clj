@@ -20,7 +20,7 @@
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
 ; vvv This must be 4 bits minimum
-(def num-bits 256) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
+(def num-bits 16) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
 (def num-rounds 2) ; must be non-zero!
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
