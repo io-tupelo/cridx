@@ -3,8 +3,8 @@
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [
                  [org.clojure/clojure "1.11.1"]
-                 [prismatic/schema "1.2.1"]
-                 [tupelo "22.05.04"]
+                 [prismatic/schema "1.4.1"]
+                 [tupelo "22.08.03"]
                  [org.clj-commons/claypoole "1.2.2"]
                  ]
   :plugins [

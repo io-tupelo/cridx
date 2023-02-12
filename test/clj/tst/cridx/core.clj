@@ -8,26 +8,29 @@
 
 (set! *warn-on-reflection* true)
 
-(dotest
+(def verbose? false)
+
+(verify
   (throws? (BigInteger->bitstr 5 2))
   (is= "101" (BigInteger->bitstr 5 3))
   (is= "0101" (BigInteger->bitstr 5 4))
-  (is= "00000101" (BigInteger->bitstr 5 8))
-  )
+  (is= "00000101" (BigInteger->bitstr 5 8)))
 
-(dotest
+(verify
   (when true ; visual dubugging
     (nl)
-    (println "    idx   cridx    hex     binary  ")
-    (forv [i (take 44 (range N-max))]
-      (let [val (idx-shuffle i)]
-        (when (neg? val)
-          (throw (ex-info "found-negative" (vals->map val))))
-        (when verbose?
+    (let [cridx-vals (prof/with-timer-print :table-print
+                       (forv [i (take 1000 (range N-max))]
+                         (idx-shuffle i)))]
+      (when verbose?
+        (nl)
+        (println "    idx   cridx    hex     binary  ")
+        (doseq [[i val] (indexed cridx-vals)]
+          (when (neg? val)
+            (throw (ex-info "found-negative" (vals->map val))))
           (let [fmt-str (str "%7d  %0" num-dec-digits "d   %s   %s")]
             (println (format fmt-str i val (math/BigInteger->hex-str val num-hex-digits)
-                       (BigInteger->bitstr val num-bits)
-                       )))))))
+                       (BigInteger->bitstr val num-bits))))))))
 
   ; arg must be in slice [0..N-max)
   (throws-not? (idx-shuffle-round 0))
@@ -44,7 +47,7 @@
         (let [nums-orig     (range N-max)
               nums-shuffled (cp/pmap :builtin idx-shuffle nums-orig)]
           (is-set= nums-orig nums-shuffled))))
-    (do  ; else
+    (do   ; else
       (print "Skipping integer coverage test.")
       (newline))))
 

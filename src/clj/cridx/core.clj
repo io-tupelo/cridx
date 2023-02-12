@@ -19,11 +19,9 @@
 
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
-(def verbose? true)
-
 ; vvv This must be 4 bits minimum
-(def num-bits 16) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
-(def num-rounds 3) ; must be non-zero!
+(def num-bits 64) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
+(def num-rounds 2) ; must be non-zero!
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
 (def num-hex-digits (long (Math/ceil (/ num-bits 4)))) ; (log2 16) => 4
@@ -121,7 +119,10 @@
         x5 (shuffle-bits x4)]
     x5))
 
-; timing: approx 25 microsec/call (num-rounds=3) (25 sec per 2^20 integers)
+; Timing (2 rounds):
+;   32 bits:  20 usec/call
+;   64 bits:  40 usec/call
+;  128 bits:  55 usec/call
 (s/defn idx-shuffle :- BigInteger
   [idx :- s/Int]
   (biginteger
