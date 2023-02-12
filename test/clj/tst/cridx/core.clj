@@ -8,8 +8,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def verbose? false)
-
 (verify
   (throws? (BigInteger->bitstr 5 2))
   (is= "101" (BigInteger->bitstr 5 3))
@@ -19,10 +17,10 @@
 (verify
   (when true ; visual dubugging
     (nl)
-    (let [cridx-vals (prof/with-timer-print :table-print
+    (let [cridx-vals (prof/with-timer-print :table-print ; timing for 1000 CRIDX values
                        (forv [i (take 1000 (range N-max))]
                          (idx-shuffle i)))]
-      (when verbose?
+      (when false ; verbose
         (nl)
         (println "    idx   cridx    hex     binary  ")
         (doseq [[i val] (indexed cridx-vals)]
