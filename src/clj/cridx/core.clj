@@ -15,12 +15,12 @@
 ;  - next-hex
 ;
 ; new:  CRIDX - Cipher Random Index
-; old:  CRUID - Cipher Random Unique ID
+; new:  CRINT - Cipher Random Integer
 
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
 ; vvv This must be 4 bits minimum
-(def num-bits 64) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
+(def num-bits 256) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
 (def num-rounds 2) ; must be non-zero!
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
@@ -31,18 +31,23 @@
 (spyx num-bits)
 (spyx N-max)
 
-; #todo -> tupelo.math (incl unit tests)
-(s/defn BigInteger->bitstr  :- s/Str
-  [N :- s/Int
-   width :- s/Int]
-  (let [bitstr-raw  (.toString (biginteger N) 2)
-        extra-chars (- width (count bitstr-raw))
-        >>          (assert (int-nonneg? extra-chars))
-        result      (strcat (repeat extra-chars \0) bitstr-raw)]
+(s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
+  [bi-orig :- s/Int
+   bits-width :- s/Int]
+  (let [bits-orig         (math/BigInteger->binary-chars (biginteger bi-orig)) ; does not include leading zeros
+        num-bits-returned (count bits-orig)
+        num-leading-zeros (- bits-width num-bits-returned)
+        >>                (assert (int-nonneg? num-leading-zeros))
+        result            (glue (repeat num-leading-zeros \0) bits-orig)]
     result))
 
-(when-not (<= 4 num-bits 160)
-  (throw (ex-info "num-bits out of range [4..120]" (vals->map num-bits))))
+(s/defn int->bitstr :- s/Str ; #todo => tupelo.math
+  [bi-orig :- s/Int
+   bits-width :- s/Int]
+  (strcat (int->bitchars bi-orig bits-width)))
+
+(when-not (<= 4 num-bits 256)
+  (throw (ex-info "num-bits out of range [4..160]" (vals->map num-bits))))
 
 ;-----------------------------------------------------------------------------
 ; initialization
@@ -92,22 +97,19 @@
     result))
 (spyx bit-order)
 
-(s/defn ^:no-doc shuffle-bits :- BigInteger
+(s/defn ^:no-doc shuffle-bits :- BigInteger ; #todo need unshuffle-bits
   [arg :- BigInteger]
   (when-not (and (<= 0 arg) (< arg N-max))
     (throw (ex-info "arg out of range" (vals->map arg N-max))))
-  (let [bits-orig         (math/BigInteger->binary-chars arg) ; does not include leading zeros
-        num-bits-returned (count bits-orig)
-        num-leading-zeros (- num-bits num-bits-returned)
-        bits-full         (glue (repeat num-leading-zeros \0) bits-orig)
-        bits-out          (forv [i (range num-bits)]
-                            (let [isrc    (get bit-order i)
-                                  bit-val (get bits-full isrc)]
-                              bit-val))
-        result            (math/binary-chars->BigInteger bits-out)]
+  (let [bits-full (int->bitchars arg num-bits)
+        bits-out  (forv [i (range num-bits)]
+                    (let [isrc    (get bit-order i)
+                          bit-val (get bits-full isrc)]
+                      bit-val))
+        result    (math/binary-chars->BigInteger bits-out)]
     result))
 
-(s/defn ^:no-doc idx-shuffle-round :- BigInteger
+(s/defn ^:no-doc encrypt-once :- BigInteger
   [idx :- s/Int]
   (when-not (and (<= 0 idx) (< idx N-max))
     (throw (ex-info "arg out of range" (vals->map idx N-max))))
@@ -122,11 +124,12 @@
 ;   32 bits:  20 usec/call
 ;   64 bits:  40 usec/call
 ;  128 bits:  55 usec/call
-(s/defn idx-shuffle :- BigInteger
+;  256 bits: 110 usec/call
+(s/defn idx->cridx :- BigInteger
   [idx :- s/Int]
   (biginteger
     (nth
-      (iterate idx-shuffle-round idx) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
+      (iterate encrypt-once idx) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
       num-rounds))) ;
 
 
