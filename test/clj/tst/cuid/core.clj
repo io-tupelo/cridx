@@ -1,5 +1,5 @@
-(ns tst.cridx.core
-  (:use cridx.core tupelo.core tupelo.test)
+(ns tst.cuid.core
+  (:use cuid.core tupelo.core tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
     [tupelo.math :as math]

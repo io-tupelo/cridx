@@ -1,4 +1,4 @@
-(ns cridx.core
+(ns cuid.core
   (:use tupelo.core)
   (:require
     [schema.core :as s]
@@ -58,6 +58,7 @@
   (if false
     (Random. seed)
     (Random.)))
+; (spyx (.nextInt random))
 
 (def offset (it-> (.nextDouble random)
               (* it N-third)
