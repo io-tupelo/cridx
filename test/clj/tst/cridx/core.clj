@@ -19,7 +19,7 @@
     (nl)
     (let [cridx-vals (prof/with-timer-print :table-print ; timing for 1000 CRIDX values
                        (forv [i (take 1000 (range N-max))]
-                         (idx->cridx i)))]
+                         (int->crint i)))]
       (when false ; verbose
         (nl)
         (println "    idx   cridx    hex     binary  ")
@@ -31,10 +31,10 @@
                        (int->bitstr val num-bits))))))))
 
   ; arg must be in slice [0..N-max)
-  (throws-not? (encrypt-once 0))
-  (throws-not? (encrypt-once (dec N-max)))
-  (throws? (encrypt-once -1))
-  (throws? (encrypt-once N-max))
+  (throws-not? (encrypt-frame 0))
+  (throws-not? (encrypt-frame (dec N-max)))
+  (throws? (encrypt-frame -1))
+  (throws? (encrypt-frame N-max))
 
   (newline)
   (if (< N-max (math/pow-long 2 21))
@@ -43,7 +43,7 @@
       (newline)
       (prof/with-timer-print :coverage-test
         (let [nums-orig     (range N-max)
-              nums-shuffled (cp/pmap :builtin idx->cridx nums-orig)]
+              nums-shuffled (cp/pmap :builtin int->crint nums-orig)]
           (is-set= nums-orig nums-shuffled))))
     (do   ; else
       (print "Skipping integer coverage test.")

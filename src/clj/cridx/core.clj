@@ -8,19 +8,20 @@
     [java.util Random]))
 
 ;---------------------------------------------------------------------------------------------------
+; new:  CRINT - Cipher Random Integer
+;
 ; BitScrambler
 ;  - idx->int
 ;  - idx->hex
 ;  - next-int
 ;  - next-hex
-;
-; new:  CRIDX - Cipher Random Index
-; new:  CRINT - Cipher Random Integer
 
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
-; vvv This must be 4 bits minimum
-(def num-bits 16) ; 20 bits => 18 sec/(3xrounds) (ie 1M items)
+(def min-bits 4) ; NOTE! important! 4 bits minimum
+(def max-bits 1024) ; no real upper limit
+
+(def num-bits 32)
 (def num-rounds 2) ; must be non-zero!
 
 (def num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10)))))
@@ -46,8 +47,8 @@
    bits-width :- s/Int]
   (strcat (int->bitchars bi-orig bits-width)))
 
-(when-not (<= 4 num-bits 256)
-  (throw (ex-info "num-bits out of range [4..160]" (vals->map num-bits))))
+(when-not (<= min-bits num-bits max-bits)
+  (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
 
 ;-----------------------------------------------------------------------------
 ; initialization
@@ -109,7 +110,7 @@
         result    (math/binary-chars->BigInteger bits-out)]
     result))
 
-(s/defn ^:no-doc encrypt-once :- BigInteger
+(s/defn ^:no-doc encrypt-frame :- BigInteger
   [idx :- s/Int]
   (when-not (and (<= 0 idx) (< idx N-max))
     (throw (ex-info "arg out of range" (vals->map idx N-max))))
@@ -125,11 +126,13 @@
 ;   64 bits:  40 usec/call
 ;  128 bits:  55 usec/call
 ;  256 bits: 110 usec/call
-(s/defn idx->cridx :- BigInteger
+;  512 bits: 260 usec/call
+; 1024 bits: 600 usec/call
+(s/defn int->crint :- BigInteger
   [idx :- s/Int]
   (biginteger
     (nth
-      (iterate encrypt-once idx) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
+      (iterate encrypt-frame idx) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
       num-rounds))) ;
 
 
