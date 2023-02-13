@@ -8,7 +8,7 @@
     [java.util Random]))
 
 ;---------------------------------------------------------------------------------------------------
-; new:  CRINT - Cipher Random Integer
+; new:  CUID - Cipher Unique ID
 ;
 ; BitScrambler
 ;  - idx->int
