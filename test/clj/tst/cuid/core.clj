@@ -61,7 +61,7 @@
   )
 
 (verify
-  (when false ; timing printouts disabled by default
+  (when visual-debugging? ; timing printouts disabled by default
 
     (nl)
     (tsk/with-validation-disabled
