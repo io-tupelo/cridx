@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def visual-debugging? true) ; <= enable to see extra printouts
+(def visual-debugging? false) ; <= enable to see extra printouts
 
 ; does even? work for BigInteger values?
 (verify
