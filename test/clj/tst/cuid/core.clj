@@ -56,34 +56,30 @@
 (verify
   (when true ; timing printouts disabled by default
 
-    (let [ctx (new-ctx {:num-bits 32})]
-      (tsk/with-validation-disabled
+    (tsk/with-validation-disabled
+      (let [ctx (new-ctx {:num-bits 32})]
         (prof/with-timer-print :timing-1000-32 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
-            (int->cuid ctx i)))))
-    (let [ctx (new-ctx {:num-bits 64})]
-      (prof/with-timer-print :timing-1000-64 ; timing for 1000 CRIDX values
-        (tsk/with-validation-disabled
+            (int->cuid ctx i))))
+      (let [ctx (new-ctx {:num-bits 64})]
+        (prof/with-timer-print :timing-1000-64 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
-            (int->cuid ctx i)))))
-    (let [ctx (new-ctx {:num-bits 128})]
-      (prof/with-timer-print :timing-1000-128 ; timing for 1000 CRIDX values
-        (tsk/with-validation-disabled
+            (int->cuid ctx i))))
+      (let [ctx (new-ctx {:num-bits 128})]
+        (prof/with-timer-print :timing-1000-128 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
-            (int->cuid ctx i)))))
-    (let [ctx (new-ctx {:num-bits 256})]
-      (prof/with-timer-print :timing-1000-256 ; timing for 1000 CRIDX values
-        (tsk/with-validation-disabled
+            (int->cuid ctx i))))
+
+      (let [ctx (new-ctx {:num-bits 256})]
+        (prof/with-timer-print :timing-1000-256 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
-            (int->cuid ctx i)))))
-    (let [ctx (new-ctx {:num-bits 512})]
-      (prof/with-timer-print :timing-1000-512 ; timing for 1000 CRIDX values
-        (tsk/with-validation-disabled
+            (int->cuid ctx i))))
+      (let [ctx (new-ctx {:num-bits 512})]
+        (prof/with-timer-print :timing-1000-512 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
-            (int->cuid ctx i)))))
-    (let [ctx (new-ctx {:num-bits 1024})]
-      (tsk/with-validation-disabled)
-      (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
-        (tsk/with-validation-disabled
+            (int->cuid ctx i))))
+      (let [ctx (new-ctx {:num-bits 1024})]
+        (tsk/with-validation-disabled)
+        (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
             (int->cuid ctx i)))))))
