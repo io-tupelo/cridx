@@ -1,10 +1,7 @@
 (ns tst.cuid.core
-  (:use cuid.core
-        tupelo.core
-        tupelo.test)
+  (:use cuid.core tupelo.core tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
-    [tupelo.java-time :as jt]
     [tupelo.math :as math]
     [tupelo.profile :as prof]
     [tupelo.schema :as tsk]
@@ -12,6 +9,8 @@
     ))
 
 (set! *warn-on-reflection* true)
+
+(def visual-debugging? true ) ; <= enable to see extra printouts
 
 (verify
   (throws? (int->bitstr 5 2))
@@ -22,7 +21,7 @@
 (verify
   (nl)
   (let [ctx (new-ctx {:num-bits 32
-                      :verbose  true})]
+                      :verbose  visual-debugging?})]
     (with-map-vals ctx [num-bits N-max num-dec-digits num-hex-digits]
       ; arg must be in slice 0..(dec N-max)
       (throws-not? (encrypt-frame ctx 0))
@@ -30,9 +29,8 @@
       (throws? (encrypt-frame ctx -1))
       (throws? (encrypt-frame ctx N-max))
 
-      ; visual dubugging
-      (when false
-        (let [cridx-vals (forv [i (take 50 (range N-max))]
+      (when visual-debugging?
+        (let [cridx-vals (forv [i (take 32 (range N-max))]
                            (int->cuid ctx i))]
           (nl)
           (println "    idx   CUID         hex          binary  ")
@@ -43,19 +41,30 @@
               (println (format fmt-str i val (math/BigInteger->hex-str val num-hex-digits)
                          (int->bitstr val num-bits)))))))))
 
-  (let [ctx (new-ctx {:num-bits 16})]
-    (with-map-vals ctx [num-bits N-max]
-      (newline)
-      (println (format "Running integer coverage test (num-bits: %d  N-max: %d)" num-bits N-max))
-      (prof/with-timer-print :coverage-test
+  ; Fast coverage tests
+  (doseq [nbits [8 9 10 11 12]]
+    (let [ctx (new-ctx {:num-bits nbits})]
+      (with-map-vals ctx [N-max]
         (let [nums-orig     (range N-max)
               nums-shuffled (cp/pmap :builtin #(int->cuid ctx %) nums-orig)]
-          (is-set= nums-orig nums-shuffled)))
-      )))
+          (is-set= nums-orig nums-shuffled)))))
+
+  ; Slow coverage test (~35 sec)
+  (when false
+    (let [ctx (new-ctx {:num-bits 20})]
+      (with-map-vals ctx [num-bits N-max]
+        (nl)
+        (println (format "Running integer coverage test (num-bits: %d  N-max: %d)" num-bits N-max))
+        (prof/with-timer-print :coverage-test
+          (let [nums-orig     (range N-max)
+                nums-shuffled (cp/pmap :builtin #(int->cuid ctx %) nums-orig)]
+            (is-set= nums-orig nums-shuffled))))))
+  )
 
 (verify
-  (when true ; timing printouts disabled by default
+  (when false ; timing printouts disabled by default
 
+    (nl)
     (tsk/with-validation-disabled
       (let [ctx (new-ctx {:num-bits 32})]
         (prof/with-timer-print :timing-1000-32 ; timing for 1000 CRIDX values
