@@ -5,7 +5,6 @@
     [tupelo.math :as math]
     [tupelo.profile :as prof]
     [tupelo.schema :as tsk]
-    [tupelo.string :as str]
     ))
 
 (set! *warn-on-reflection* true)
