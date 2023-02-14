@@ -2,7 +2,6 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
-    [tupelo.core :as t]
     [tupelo.math :as math]
     [tupelo.schema :as tsk]
     [tupelo.string :as str])
