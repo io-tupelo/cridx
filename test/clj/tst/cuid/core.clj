@@ -1,7 +1,11 @@
 (ns tst.cuid.core
-  (:use cuid.core tupelo.core tupelo.test)
+  (:use cuid.core
+        tupelo.core
+        tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
+    [criterium.core :as crit]
+    [schema.core :as s]
     [tupelo.math :as math]
     [tupelo.profile :as prof]
     [tupelo.schema :as tsk]
@@ -18,16 +22,24 @@
 
 (verify
   (let [bi-five (biginteger 5)]
-    (throws? (BigInteger->bitstr bi-five 2))
-    (is= "101" (BigInteger->bitstr bi-five 3))
-    (is= "0101" (BigInteger->bitstr bi-five 4))
-    (is= "00000101" (BigInteger->bitstr bi-five 8))))
+    (throws? (s/validate BigInteger 5))
+    (s/validate BigInteger bi-five)
+    (s/validate s/Int bi-five)
+    (s/validate s/Int 5)
 
-(verify
+    (throws? (int->bitstr bi-five 2))
+    (is= "101" (int->bitstr bi-five 3))
+    (is= "0101" (int->bitstr bi-five 4))
+    (is= "00000101" (int->bitstr bi-five 8)))
+
   (throws? (int->bitstr 5 2))
   (is= "101" (int->bitstr 5 3))
   (is= "0101" (int->bitstr 5 4))
-  (is= "00000101" (int->bitstr 5 8)))
+  (is= "00000101" (int->bitstr 5 8))
+
+  ; (crit/quick-bench (biginteger 5)) ; ~ 0.5 nanosec
+
+  )
 
 ;-----------------------------------------------------------------------------
 (verify

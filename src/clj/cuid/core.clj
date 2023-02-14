@@ -4,7 +4,8 @@
     [schema.core :as s]
     [tupelo.core :as t]
     [tupelo.math :as math]
-    [tupelo.schema :as tsk])
+    [tupelo.schema :as tsk]
+    [tupelo.string :as str])
   (:import
     [java.util Random]))
 
@@ -24,25 +25,20 @@
 (def ^:no-doc max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
 
 ;-----------------------------------------------------------------------------
-(s/defn BigInteger->bitchars :- tsk/Vec ; #todo => tupelo.math
-  [bi-val :- BigInteger
+(s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
+  [ival :- s/Int
    bits-width :- s/Int]
-  (let [bits-orig         (math/BigInteger->binary-chars bi-val) ; does not include leading zeros
+  (let [bits-orig         (math/BigInteger->binary-chars (biginteger ival)) ; does not include leading zeros
         num-bits-returned (count bits-orig)
         num-leading-zeros (- bits-width num-bits-returned)
         >>                (assert (int-nonneg? num-leading-zeros))
         result            (glue (repeat num-leading-zeros \0) bits-orig)]
     result))
 
-(s/defn BigInteger->bitstr :- s/Str ; #todo => tupelo.math
-  [bi-val :- BigInteger
-   bits-width :- s/Int]
-  (strcat (BigInteger->bitchars bi-val bits-width)))
-
 (s/defn int->bitstr :- s/Str ; #todo => tupelo.math
   [ival :- s/Int
    bits-width :- s/Int]
-  (strcat (BigInteger->bitchars (biginteger ival) bits-width)))
+  (str/join (int->bitchars ival bits-width)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -142,11 +138,11 @@
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits :- BigInteger ; #todo need unshuffle-bits
   [ctx :- tsk/KeyMap
-   ival :- BigInteger]
+   ival :- s/Int]
   (with-map-vals ctx [N-max num-bits bit-order]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    (let [bits-full (BigInteger->bitchars ival num-bits)
+    (let [bits-full (int->bitchars ival num-bits)
           bits-out  (forv [i (range num-bits)]
                       (let [isrc    (get bit-order i)
                             bit-val (get bits-full isrc)]
