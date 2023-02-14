@@ -28,12 +28,12 @@
 (s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
   [ival :- s/Int
    bits-width :- s/Int]
-  (let [bits-orig         (math/BigInteger->binary-chars (biginteger ival)) ; does not include leading zeros
-        num-bits-returned (count bits-orig)
-        num-leading-zeros (- bits-width num-bits-returned)
+  (let [bitchars-orig     (math/BigInteger->binary-chars (biginteger ival)) ; does not include leading zeros
+        num-bitchars      (count bitchars-orig)
+        num-leading-zeros (- bits-width num-bitchars)
         >>                (assert (int-nonneg? num-leading-zeros))
-        result            (glue (repeat num-leading-zeros \0) bits-orig)]
-    result))
+        bitchars-final    (glue (repeat num-leading-zeros \0) bitchars-orig)]
+    bitchars-final))
 
 (s/defn int->bitstr :- s/Str ; #todo => tupelo.math
   [ival :- s/Int
