@@ -164,9 +164,9 @@
       x5)))
 
 ; Timing (2 rounds):
-;   32 bits:  17 usec/call
+;   32 bits:  15 usec/call
 ;   64 bits:  25 usec/call
-;  128 bits:  43 usec/call
+;  128 bits:  42 usec/call
 ;  256 bits:  80 usec/call
 ;  512 bits: 150 usec/call
 ; 1024 bits: 300 usec/call
@@ -178,5 +178,4 @@
       (nth
         (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
         num-rounds)))) ;
-
 

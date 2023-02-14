@@ -54,41 +54,36 @@
       )))
 
 (verify
-  (let [ctx (new-ctx {:num-bits 32})]
-    (tsk/with-validation-disabled
-      (with-map-vals ctx [N-max]
-        (prof/with-timer-print :timing-1000-32 ; timing for 1000 CRIDX values
-          (doseq [i (take 1000 (range N-max))]
-            (int->cuid ctx i))))))
-  (let [ctx (new-ctx {:num-bits 64})]
-    (tsk/with-validation-disabled
-      (with-map-vals ctx [N-max]
-        (prof/with-timer-print :timing-1000-64 ; timing for 1000 CRIDX values
-          (doseq [i (take 1000 (range N-max))]
-            (int->cuid ctx i))))))
-  (let [ctx (new-ctx {:num-bits 128})]
-    (tsk/with-validation-disabled
-      (with-map-vals ctx [N-max]
-        (prof/with-timer-print :timing-1000-128 ; timing for 1000 CRIDX values
-          (doseq [i (take 1000 (range N-max))]
-            (int->cuid ctx i))))))
+  (when true ; timing printouts disabled by default
 
-  (when false
+    (let [ctx (new-ctx {:num-bits 32})]
+      (tsk/with-validation-disabled
+        (prof/with-timer-print :timing-1000-32 ; timing for 1000 CRIDX values
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))
+    (let [ctx (new-ctx {:num-bits 64})]
+      (prof/with-timer-print :timing-1000-64 ; timing for 1000 CRIDX values
+        (tsk/with-validation-disabled
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))
+    (let [ctx (new-ctx {:num-bits 128})]
+      (prof/with-timer-print :timing-1000-128 ; timing for 1000 CRIDX values
+        (tsk/with-validation-disabled
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))
     (let [ctx (new-ctx {:num-bits 256})]
-      (tsk/with-validation-disabled
-        (with-map-vals ctx [N-max]
-          (prof/with-timer-print :timing-1000-256 ; timing for 1000 CRIDX values
-            (doseq [i (take 1000 (range N-max))]
-              (int->cuid ctx i))))))
+      (prof/with-timer-print :timing-1000-256 ; timing for 1000 CRIDX values
+        (tsk/with-validation-disabled
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))
     (let [ctx (new-ctx {:num-bits 512})]
-      (tsk/with-validation-disabled
-        (with-map-vals ctx [N-max]
-          (prof/with-timer-print :timing-1000-512 ; timing for 1000 CRIDX values
-            (doseq [i (take 1000 (range N-max))]
-              (int->cuid ctx i))))))
+      (prof/with-timer-print :timing-1000-512 ; timing for 1000 CRIDX values
+        (tsk/with-validation-disabled
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))
     (let [ctx (new-ctx {:num-bits 1024})]
-      (tsk/with-validation-disabled
-        (with-map-vals ctx [N-max]
-          (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
-            (doseq [i (take 1000 (range N-max))]
-              (int->cuid ctx i))))))))
+      (tsk/with-validation-disabled)
+      (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
+        (tsk/with-validation-disabled
+          (dotimes [i 1000]
+            (int->cuid ctx i)))))))
