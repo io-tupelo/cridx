@@ -9,5 +9,5 @@
 ; Prismatic Schema type definitions
 (s/set-fn-validation! true) ; enforce fn schemas
 
-(dotest
+(verify
   (t/print-versions))
