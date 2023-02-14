@@ -9,7 +9,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def visual-debugging? false ) ; <= enable to see extra printouts
+(def visual-debugging? false) ; <= enable to see extra printouts
+
+; does even? work for BigInteger values?
+(verify
+  (isnt (even? (biginteger 1)))
+  (is (even? (biginteger 2))))
 
 (verify
   (throws? (int->bitstr 5 2))

@@ -69,7 +69,7 @@
                              (+ it N-third)
                              (biginteger it)
                              (if (even? it) ; ensure it is odd
-                                 (.add ^BigInteger it (biginteger 1))
+                                 (.add it (biginteger 1))
                                  it)))
 
           ; #todo extract to a function & write unit tests
@@ -156,9 +156,9 @@
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     (let [x1 (biginteger ival)
-          x2 (.multiply ^BigInteger x1 slope)
-          x3 (.add ^BigInteger offset x2)
-          x4 (.mod ^BigInteger x3 N-max)
+          x2 (.multiply x1 slope)
+          x3 (.add offset x2)
+          x4 (.mod x3 N-max)
           x5 (shuffle-bits ctx x4)]
       x5)))
 
