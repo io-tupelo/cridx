@@ -137,11 +137,11 @@
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits :- BigInteger ; #todo need unshuffle-bits
   [ctx :- tsk/KeyMap
-   arg :- BigInteger]
+   ival :- BigInteger]
   (with-map-vals ctx [N-max num-bits bit-order]
-    (when-not (and (<= 0 arg) (< arg N-max))
-      (throw (ex-info "arg out of range" (vals->map arg N-max))))
-    (let [bits-full (int->bitchars arg num-bits)
+    (when-not (and (<= 0 ival) (< ival N-max))
+      (throw (ex-info "ival out of range" (vals->map ival N-max))))
+    (let [bits-full (int->bitchars ival num-bits)
           bits-out  (forv [i (range num-bits)]
                       (let [isrc    (get bit-order i)
                             bit-val (get bits-full isrc)]
@@ -154,7 +154,7 @@
    ival :- s/Int]
   (with-map-vals ctx [N-max slope offset]
     (when-not (and (<= 0 ival) (< ival N-max))
-      (throw (ex-info "arg out of range" (vals->map ival N-max))))
+      (throw (ex-info "ival out of range" (vals->map ival N-max))))
     (let [x1 (biginteger ival)
           x2 (.multiply ^BigInteger x1 slope)
           x3 (.add ^BigInteger offset x2)
