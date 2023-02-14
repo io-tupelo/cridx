@@ -3,7 +3,6 @@
   (:require
     [schema.core :as s]
     [tupelo.core :as t]
-    [tupelo.set :as set]
     [tupelo.math :as math]
     [tupelo.schema :as tsk])
   (:import
