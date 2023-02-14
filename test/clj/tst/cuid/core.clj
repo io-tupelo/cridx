@@ -30,16 +30,19 @@
     (throws? (int->bitstr bi-five 2))
     (is= "101" (int->bitstr bi-five 3))
     (is= "0101" (int->bitstr bi-five 4))
-    (is= "00000101" (int->bitstr bi-five 8)))
+    (is= "00000101" (int->bitstr bi-five 8))
 
-  (throws? (int->bitstr 5 2))
-  (is= "101" (int->bitstr 5 3))
-  (is= "0101" (int->bitstr 5 4))
-  (is= "00000101" (int->bitstr 5 8))
+    (throws? (int->bitstr 5 2))
+    (is= "101" (int->bitstr 5 3))
+    (is= "0101" (int->bitstr 5 4))
+    (is= "00000101" (int->bitstr 5 8))
 
-  ; (crit/quick-bench (biginteger 5)) ; ~ 0.5 nanosec
-
-  )
+    (while false
+      (nl) (prn :5)
+      (crit/quick-bench (biginteger 5)) ;        ~ 7 nanosec
+      (nl) (prn :bi-five)
+      (crit/quick-bench (biginteger bi-five)) ;  ~ 4 nanosec
+      )))
 
 ;-----------------------------------------------------------------------------
 (verify
