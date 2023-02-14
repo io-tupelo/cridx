@@ -164,8 +164,8 @@
       x5)))
 
 ; Timing (2 rounds):
-;   32 bits:  18 usec/call
-;   64 bits:  26 usec/call
+;   32 bits:  17 usec/call
+;   64 bits:  25 usec/call
 ;  128 bits:  43 usec/call
 ;  256 bits:  80 usec/call
 ;  512 bits: 150 usec/call
