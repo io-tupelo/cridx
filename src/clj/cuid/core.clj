@@ -8,7 +8,7 @@
   (:import
     [java.util Random]))
 
-;---------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------
 ; new:  CUID - Cipher Unique ID
 ;
 ; BitScrambler
@@ -24,20 +24,25 @@
 (def ^:no-doc max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
 
 ;-----------------------------------------------------------------------------
-(s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
-  [ival :- s/Int
+(s/defn BigInteger->bitchars :- tsk/Vec ; #todo => tupelo.math
+  [bi-val :- BigInteger
    bits-width :- s/Int]
-  (let [bits-orig         (math/BigInteger->binary-chars (biginteger ival)) ; does not include leading zeros
+  (let [bits-orig         (math/BigInteger->binary-chars bi-val) ; does not include leading zeros
         num-bits-returned (count bits-orig)
         num-leading-zeros (- bits-width num-bits-returned)
         >>                (assert (int-nonneg? num-leading-zeros))
         result            (glue (repeat num-leading-zeros \0) bits-orig)]
     result))
 
-(s/defn int->bitstr :- s/Str ; #todo => tupelo.math
-  [bi-orig :- s/Int
+(s/defn BigInteger->bitstr :- s/Str ; #todo => tupelo.math
+  [bi-val :- BigInteger
    bits-width :- s/Int]
-  (strcat (int->bitchars bi-orig bits-width)))
+  (strcat (BigInteger->bitchars bi-val bits-width)))
+
+(s/defn int->bitstr :- s/Str ; #todo => tupelo.math
+  [ival :- s/Int
+   bits-width :- s/Int]
+  (strcat (BigInteger->bitchars (biginteger ival) bits-width)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -141,7 +146,7 @@
   (with-map-vals ctx [N-max num-bits bit-order]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    (let [bits-full (int->bitchars ival num-bits)
+    (let [bits-full (BigInteger->bitchars ival num-bits)
           bits-out  (forv [i (range num-bits)]
                       (let [isrc    (get bit-order i)
                             bit-val (get bits-full isrc)]
@@ -156,9 +161,9 @@
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     (let [x1 (biginteger ival)
-          x2 (.multiply x1 slope)
-          x3 (.add offset x2)
-          x4 (.mod x3 N-max)
+          x2 (.multiply ^BigInteger x1 slope)
+          x3 (.add ^BigInteger offset x2)
+          x4 (.mod ^BigInteger x3 N-max)
           x5 (shuffle-bits ctx x4)]
       x5)))
 

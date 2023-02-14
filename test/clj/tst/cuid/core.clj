@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def visual-debugging? false) ; <= enable to see extra printouts
+(def visual-debugging? true) ; <= enable to see extra printouts
 
 ; does even? work for BigInteger values?
 (verify
@@ -17,11 +17,19 @@
   (is (even? (biginteger 2))))
 
 (verify
+  (let [bi-five (biginteger 5)]
+    (throws? (BigInteger->bitstr bi-five 2))
+    (is= "101" (BigInteger->bitstr bi-five 3))
+    (is= "0101" (BigInteger->bitstr bi-five 4))
+    (is= "00000101" (BigInteger->bitstr bi-five 8))))
+
+(verify
   (throws? (int->bitstr 5 2))
   (is= "101" (int->bitstr 5 3))
   (is= "0101" (int->bitstr 5 4))
   (is= "00000101" (int->bitstr 5 8)))
 
+;-----------------------------------------------------------------------------
 (verify
   (let [ctx (new-ctx {:num-bits 32
                       :verbose  visual-debugging?})]
