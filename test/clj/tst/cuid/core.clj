@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def visual-debugging? true ) ; <= enable to see extra printouts
+(def visual-debugging? false ) ; <= enable to see extra printouts
 
 (verify
   (throws? (int->bitstr 5 2))
@@ -19,7 +19,6 @@
   (is= "00000101" (int->bitstr 5 8)))
 
 (verify
-  (nl)
   (let [ctx (new-ctx {:num-bits 32
                       :verbose  visual-debugging?})]
     (with-map-vals ctx [num-bits N-max num-dec-digits num-hex-digits]
