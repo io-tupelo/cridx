@@ -2,6 +2,8 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
+    [tupelo.core :as t]
+    [tupelo.set :as set]
     [tupelo.math :as math]
     [tupelo.schema :as tsk])
   (:import
@@ -19,18 +21,32 @@
 ; #todo add fns:  next-biginteger, next-str-dec, next-str-hex
 
 ;-----------------------------------------------------------------------------
-(def min-bits 4) ; NOTE! IMPORTANT! 4 bits minimum due to shuffle step
-(def max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
+(def ^:no-doc min-bits 4) ; NOTE! IMPORTANT! 4 bits minimum due to shuffle step
+(def ^:no-doc max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
 
 ;-----------------------------------------------------------------------------
-; initialization
-(def seed 777717777)
+(s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
+  [ival :- s/Int
+   bits-width :- s/Int]
+  (let [bits-orig         (math/BigInteger->binary-chars (biginteger ival)) ; does not include leading zeros
+        num-bits-returned (count bits-orig)
+        num-leading-zeros (- bits-width num-bits-returned)
+        >>                (assert (int-nonneg? num-leading-zeros))
+        result            (glue (repeat num-leading-zeros \0) bits-orig)]
+    result))
 
+(s/defn int->bitstr :- s/Str ; #todo => tupelo.math
+  [bi-orig :- s/Int
+   bits-width :- s/Int]
+  (strcat (int->bitchars bi-orig bits-width)))
+
+;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
   [params :- tsk/KeyMap]
-  (with-map-vals params [num-bits rand-seed num-rounds]
+  (with-map-vals params [num-bits rand-seed num-rounds verbose]
     (assert (pos-int? num-bits))
     (assert (pos-int? num-rounds))
+    (assert (pos-int? rand-seed))
     (let [random-gen     (Random. rand-seed)
 
           ; used for text formatting only
@@ -42,10 +58,10 @@
           N-max          (math/pow-BigInteger 2 num-bits)
           N-third        (.divide N-max (biginteger 3))
 
-          offset         (it-> (.nextDouble random-gen)
-                           (* it N-third)
-                           (+ it N-third)
-                           (biginteger it))
+          offset         (biginteger
+                           (it-> (.nextDouble random-gen)
+                             (* it N-third)
+                             (+ it N-third)))
 
           ; ***** MUST BE ODD *****  Thus, it is relatively prime to N-max (power of 2 => even)
           slope          (biginteger
@@ -66,14 +82,10 @@
                                                 bit-seq))
                                result       (vec (apply interleave-all bit-seqs-rev))] ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
                            (assert (= (set (range num-bits)) (set result)))
-                           result)
-          ]
+                           result)]
+
       (when-not (<= min-bits num-bits max-bits)
         (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
-
-      (spyx num-hex-digits)
-      (spyx num-bits)
-      (spyx N-max)
 
       ;-----------------------------------------------------------------------------
       ; sanity checks
@@ -83,9 +95,13 @@
       (when-not (odd? slope) ; odd => relatively prime to 2^N
         (throw (ex-info "slope failed even test" (vals->map slope))))
 
-      (spyx [offset (math/BigInteger->binary-str offset)])
-      (spyx [slope (math/BigInteger->binary-str slope)])
-      (spyx bit-order)
+      (when verbose
+        (spyx num-bits)
+        (spyx num-hex-digits)
+        (spyx N-max)
+        (spyx [offset (math/BigInteger->binary-str offset)])
+        (spyx [slope (math/BigInteger->binary-str slope)])
+        (spyx bit-order))
 
       (vals->map num-bits num-rounds num-dec-digits num-hex-digits N-max N-third
         offset slope bit-order
@@ -93,43 +109,31 @@
 
 (s/defn new-ctx :- tsk/KeyMap
   "Creates a new CUID context map. Usage:
-        (new-ctx <num-bits>)
+
         (new-ctx <params-map>)
 
-  `num-bits` must be an integer of 4 or larger. If using the map version,
-  then `{:num-bits <n>}` is the minimal param.  Other possible params are:
+  where <params-map> is of the form:
 
-        {:rand-seed    <long>   ; the CUID encryption key
-         :num-rounds   <int>    ; must be a positive int
+        {:num-bits     <n>      ; REQUIRED (minimum: 4)
+         :rand-seed    <long>   ; the CUID encryption key (default: randomized)
+         :num-rounds   <int>    ; must be a positive int  (default: 2)
+         :verbose      false    ; enable for dbg prints
         }
   "
-  [arg    ; :- (s/cond-pre s/Int (tsk/KeyMap))
-   ]
-  (assert (or (int? arg)
-            (s/validate tsk/KeyMap arg)))
+  [arg :- tsk/KeyMap]
+  (s/validate {:num-bits                    s/Int
+               (s/optional-key :rand-seed)  s/Int
+               (s/optional-key :num-rounds) s/Int
+               (s/optional-key :verbose)    s/Bool}
+    arg)
   (let [params-default {:rand-seed  (Math/abs (.nextLong (Random.))) ; positive for simplicity
-                        :num-rounds 2}
-        params         (glue params-default  (if (int? arg)
-                                               {:num-bits arg}
-                                               arg))
+                        :num-rounds 2
+                        :verbose    false}
+        params         (glue params-default (if (int? arg)
+                                              {:num-bits arg}
+                                              arg))
         ctx            (new-ctx-impl params)]
     ctx))
-
-(s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
-  [bi-orig :- s/Int
-   bits-width :- s/Int]
-  (let [bits-orig         (math/BigInteger->binary-chars (biginteger bi-orig)) ; does not include leading zeros
-        num-bits-returned (count bits-orig)
-        num-leading-zeros (- bits-width num-bits-returned)
-        >>                (assert (int-nonneg? num-leading-zeros))
-        result            (glue (repeat num-leading-zeros \0) bits-orig)]
-    result))
-
-(s/defn int->bitstr :- s/Str ; #todo => tupelo.math
-  [bi-orig :- s/Int
-   bits-width :- s/Int]
-  (strcat (int->bitchars bi-orig bits-width)))
-
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits :- BigInteger ; #todo need unshuffle-bits
@@ -146,7 +150,7 @@
           result    (math/binary-chars->BigInteger bits-out)]
       result)))
 
-(s/defn ^:no-doc encrypt-frame :- BigInteger
+(s/defn ^:no-doc encrypt-frame :- BigInteger ; #todo need decrypt-frame
   [ctx :- tsk/KeyMap
    ival :- s/Int]
   (with-map-vals ctx [N-max slope offset]
@@ -160,12 +164,12 @@
       x5)))
 
 ; Timing (2 rounds):
-;   32 bits:  20 usec/call
-;   64 bits:  40 usec/call
-;  128 bits:  55 usec/call
-;  256 bits: 110 usec/call
-;  512 bits: 260 usec/call
-; 1024 bits: 600 usec/call
+;   32 bits:  18 usec/call
+;   64 bits:  26 usec/call
+;  128 bits:  43 usec/call
+;  256 bits:  80 usec/call
+;  512 bits: 150 usec/call
+; 1024 bits: 300 usec/call
 (s/defn int->cuid :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
