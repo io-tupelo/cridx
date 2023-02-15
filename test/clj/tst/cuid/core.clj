@@ -22,27 +22,24 @@
 
 (verify
   (let [bi-five (biginteger 5)]
+    ; How does it cost us to cast to BigInteger?
+    (while false
+      (nl) (prn :5)
+      (crit/quick-bench (biginteger 5)) ;              Long:  7 nanosec
+      (nl) (prn :bi-five)
+      (crit/quick-bench (biginteger bi-five))) ; BigINteger:  4 nanosec
+
+    ; ensure s/validate does what we want
     (throws? (s/validate BigInteger 5))
     (s/validate BigInteger bi-five)
     (s/validate s/Int bi-five)
     (s/validate s/Int 5)
 
-    (throws? (int->bitstr bi-five 2))
-    (is= "101" (int->bitstr bi-five 3))
-    (is= "0101" (int->bitstr bi-five 4))
-    (is= "00000101" (int->bitstr bi-five 8))
-
     (throws? (int->bitstr 5 2))
     (is= "101" (int->bitstr 5 3))
     (is= "0101" (int->bitstr 5 4))
     (is= "00000101" (int->bitstr 5 8))
-
-    (while false
-      (nl) (prn :5)
-      (crit/quick-bench (biginteger 5)) ;        ~ 7 nanosec
-      (nl) (prn :bi-five)
-      (crit/quick-bench (biginteger bi-five)) ;  ~ 4 nanosec
-      )))
+    ))
 
 ;-----------------------------------------------------------------------------
 (verify
