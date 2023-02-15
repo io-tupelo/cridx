@@ -5,12 +5,12 @@
            "test/cljc" ; Clojure source files
            ]
  :deps    {
-           org.clojure/clojure       {:mvn/version "1.11.1"}
-           org.clj-commons/claypoole {:mvn/version "1.2.2"}
+           org.clojure/clojure       {:mvn/version "1.12.0-alpha1"} ;  {:mvn/version "1.11.1"} 
 
-           criterium                 {:mvn/version "0.4.6"}
-           tupelo/tupelo             {:mvn/version "22.08.03"}
+           criterium/criterium       {:mvn/version "0.4.6"}
+           org.clj-commons/claypoole {:mvn/version "1.2.2"}
            prismatic/schema          {:mvn/version "1.4.1"}
+           tupelo/tupelo             {:mvn/version "22.08.03"}
            }
 
  :aliases {
