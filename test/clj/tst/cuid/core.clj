@@ -35,7 +35,7 @@
     (s/validate s/Int bi-five)
     (s/validate s/Int 5)
 
-    ; Make sure it works correctly
+  ; Make sure it works correctly
     (throws? (int->bitstr 5 2))
     (is= "101" (int->bitstr 5 3))
     (is= "0101" (int->bitstr 5 4))

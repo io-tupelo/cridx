@@ -75,10 +75,10 @@
           ; #todo extract to a function & write unit tests
           bit-order      (let [K            (Math/round (Math/sqrt num-bits))
                                bit-seqs     (partition-all K (range num-bits))
-                               bit-seqs-rev (forv [[i bit-seq] (indexed bit-seqs)]
+                               bit-seqs-rev (forv [[i ibit-seq] (indexed bit-seqs)]
                                               (if (odd? i)
-                                                (reverse bit-seq)
-                                                bit-seq))
+                                                (reverse ibit-seq)
+                                                ibit-seq))
                                result       (vec (apply interleave-all bit-seqs-rev))] ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
                            (assert (= (set (range num-bits)) (set result)))
                            result)]
