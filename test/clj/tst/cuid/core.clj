@@ -35,11 +35,72 @@
     (s/validate s/Int bi-five)
     (s/validate s/Int 5)
 
-  ; Make sure it works correctly
+    ; Make sure it works correctly
     (throws? (int->bitstr 5 2))
     (is= "101" (int->bitstr 5 3))
     (is= "0101" (int->bitstr 5 4))
     (is= "00000101" (int->bitstr 5 8))))
+
+;-----------------------------------------------------------------------------
+(verify
+  (is= [:b :c :d :a] (vec-shuffle
+                       [[0 1]
+                        [1 2]
+                        [2 3]
+                        [3 0]]
+                       [:a :b :c :d]))
+  (is= [:d :c :b :a] (vec-shuffle
+                       [[0 3]
+                        [1 2]
+                        [2 1]
+                        [3 0]]
+                       [:a :b :c :d]))
+  (is= [:c :b :d :a] (vec-shuffle
+                       [[0 2]
+                        [1 1]
+                        [2 3]
+                        [3 0]]
+                       [:a :b :c :d]))
+  (throws? (vec-shuffle
+             [[0 2]
+              [1 1]
+              [3 0]]
+             [:a :b :c :d]))
+
+
+  (let [ibit-tx-orig [[0 1]
+                      [1 2]
+                      [2 3]
+                      [3 0]]
+        data         [:a :b :c :d]]
+    (is= data
+      (it-> data
+        (vec-shuffle ibit-tx-orig it)
+        (vec-unshuffle ibit-tx-orig it))))
+
+  (let [ibit-tx-orig [[0 3]
+                      [1 2]
+                      [2 1]
+                      [3 0]]
+        data         [:a :b :c :d]]
+    (is= data
+      (it-> data
+        (vec-shuffle ibit-tx-orig it)
+        (vec-unshuffle ibit-tx-orig it))))
+
+  (throws? (vec-unshuffle [[0 2]
+                           [1 1]
+                           [3 0]]
+             [:a :b :c :d])))
+
+(verify
+  (let [ctx (it-> (new-ctx {:num-bits 10}))
+        N-max (grab :N-max ctx)
+        orig-vals (range N-max)
+        shuffled-vals (mapv #(shuffle-int-bits ctx %) orig-vals)
+        unshuffled-vals (mapv #(unshuffle-int-bits ctx %) shuffled-vals)]
+    (is-set= orig-vals shuffled-vals)
+    (is= orig-vals unshuffled-vals)))
 
 ;-----------------------------------------------------------------------------
 (verify
@@ -65,7 +126,7 @@
                          (int->bitstr val num-bits)))))))))
 
   ; Fast coverage tests
-  (doseq [nbits [8 9 10 11 12]]
+  (doseq [nbits (thru 4 12)]
     (let [ctx (new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
         (let [nums-orig     (range N-max)
@@ -81,8 +142,7 @@
         (prof/with-timer-print :coverage-test
           (let [nums-orig     (range N-max)
                 nums-shuffled (cp/pmap :builtin #(int->cuid ctx %) nums-orig)]
-            (is-set= nums-orig nums-shuffled))))))
-  )
+            (is-set= nums-orig nums-shuffled)))))))
 
 (verify
   (when visual-debugging? ; timing printouts disabled by default
@@ -115,3 +175,4 @@
         (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
           (dotimes [i 1000]
             (int->cuid ctx i)))))))
+

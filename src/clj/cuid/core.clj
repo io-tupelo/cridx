@@ -24,6 +24,8 @@
 (def ^:no-doc max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
 
 ;-----------------------------------------------------------------------------
+(def Matrix [[s/Any]])
+
 (s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
   [ival :- s/Int
    bits-width :- s/Int]
@@ -73,15 +75,17 @@
                                  it)))
 
           ; #todo extract to a function & write unit tests
-          bit-order      (let [K            (Math/round (Math/sqrt num-bits))
-                               bit-seqs     (partition-all K (range num-bits))
-                               bit-seqs-rev (forv [[i ibit-seq] (indexed bit-seqs)]
-                                              (if (odd? i)
-                                                (reverse ibit-seq)
-                                                ibit-seq))
-                               result       (vec (apply interleave-all bit-seqs-rev))] ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-                           (assert (= (set (range num-bits)) (set result)))
-                           result)]
+          ; result is vector of [itx isrc] pairs
+          ibit-tx-orig   (let [K             (Math/round (Math/sqrt num-bits))
+                               ibit-seqs     (partition-all K (range num-bits))
+                               ibit-seqs-rev (forv [[i ibit-seq] (indexed ibit-seqs)]
+                                               (if (odd? i)
+                                                 (reverse ibit-seq)
+                                                 ibit-seq))
+                               ibit-shuffled (vec (apply interleave-all ibit-seqs-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
+                               itx->isrc     (indexed ibit-shuffled)]
+                           (assert (= (set (range num-bits)) (set ibit-shuffled)))
+                           itx->isrc)]
 
       (when-not (<= min-bits num-bits max-bits)
         (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
@@ -100,10 +104,10 @@
         (spyx N-max)
         (spyx [offset (math/BigInteger->binary-str offset)])
         (spyx [slope (math/BigInteger->binary-str slope)])
-        (spyx bit-order))
+        (spyx ibit-tx-orig))
 
       (vals->map num-bits num-rounds num-dec-digits num-hex-digits N-max N-third
-        offset slope bit-order
+        offset slope ibit-tx-orig
         ))))
 
 (s/defn new-ctx :- tsk/KeyMap
@@ -135,19 +139,51 @@
     ctx))
 
 ;-----------------------------------------------------------------------------
-(s/defn ^:no-doc shuffle-bits :- BigInteger ; #todo need unshuffle-bits
+(s/defn ^:no-doc vec-shuffle :- tsk/Vec
+  [ibit-tx-orig :- Matrix
+   vec-orig :- tsk/Vec]
+  (assert (= (count ibit-tx-orig) (count vec-orig)))
+  (let [vec-shuffled (forv [[itx isrc] ibit-tx-orig]
+                       (get vec-orig isrc ::error))]
+    vec-shuffled))
+
+(s/defn ^:no-doc vec-unshuffle :- tsk/Vec
+  [ibit-tx-orig :- Matrix
+   vec-shuffled :- tsk/Vec]
+  (assert (= (count ibit-tx-orig) (count vec-shuffled)))
+
+  ; Use of transient/assoc!/persistent! may only be a 2-5x speedup, may not be worth keeping
+  ; See:  https://tech.redplanetlabs.com/2020/09/02/clojure-faster/#clojure-transients
+  ;       https://clojure.org/reference/transients
+  (let [init-result (transient
+                      (vec (repeat (count ibit-tx-orig) ::error1)))
+        vec-orig    (vec
+                      (persistent!
+                        (reduce
+                          (fn [cum [itx isrc]]
+                            (let [tx-val (get vec-shuffled itx ::error2)]
+                              (assoc! cum isrc tx-val)))
+                          init-result
+                          ibit-tx-orig)))]
+    vec-orig))
+
+(s/defn ^:no-doc shuffle-int-bits :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [N-max num-bits bit-order]
-    (when-not (and (<= 0 ival) (< ival N-max))
-      (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    (let [bits-full (int->bitchars ival num-bits)
-          bits-out  (forv [i (range num-bits)]
-                      (let [isrc    (get bit-order i)
-                            bit-val (get bits-full isrc)]
-                        bit-val))
-          result    (math/binary-chars->BigInteger bits-out)]
-      result)))
+  (with-map-vals ctx [num-bits ibit-tx-orig]
+    (it-> ival
+      (int->bitchars it num-bits)
+      (vec-shuffle ibit-tx-orig it)
+      (math/binary-chars->BigInteger it))))
+
+(s/defn ^:no-doc unshuffle-int-bits :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (with-map-vals ctx [num-bits ibit-tx-orig]
+    (it-> ival
+      (int->bitchars it num-bits)
+      (vec-unshuffle ibit-tx-orig it)
+      (math/binary-chars->BigInteger it))))
 
 (s/defn ^:no-doc encrypt-frame :- BigInteger ; #todo need decrypt-frame
   [ctx :- tsk/KeyMap
@@ -159,7 +195,7 @@
           x2 (.multiply ^BigInteger x1 slope)
           x3 (.add ^BigInteger offset x2)
           x4 (.mod ^BigInteger x3 N-max)
-          x5 (shuffle-bits ctx x4)]
+          x5 (shuffle-int-bits ctx x4)]
       x5)))
 
 ; Timing (2 rounds):
