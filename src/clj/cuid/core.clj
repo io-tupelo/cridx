@@ -42,50 +42,111 @@
   (str/join (int->bitchars ival bits-width)))
 
 ;-----------------------------------------------------------------------------
+(s/defn mod-symmetric :- s/Int
+  "Like clojure.core/mod, but returns a result symmetric around zero [-D/2..D/2). D must be even and positive."
+  [numer :- s/Int
+   D :- s/Int]
+  (assert (and (int? numer) (int-pos? D) (even? D)))
+  (let [d-ovr-2 (/ D 2)
+        result  (cond-it-> (clojure.core/mod numer D)
+                  (<= d-ovr-2 it) (- it D))]
+    result))
+
+(defn tomod [x N]
+  (it-> (biginteger x)
+    (.mod it N)))
+
+(defn div-rem
+  [numer denom]
+  [(quot numer denom)
+   (mod numer denom)])
+
+(defn ceil-long [x] (long (Math/ceil (double x))))
+(defn floor-long [x] (long (Math/floor (double x))))
+(defn round-long [x] (long (Math/round (double x))))
+(defn trunc-long [x] (long (.longValue (double x))))
+(defn signum-long [x] (cond
+                        (pos? x) +1
+                        (neg? x) -1
+                        :else 0))
+
+(defn same-sign [x y] (cond
+                        (or
+                          (and (pos? x) (pos? y))
+                          (and (neg? x) (neg? y))
+                          (and (zero? x) (zero? y))) true
+
+                        :else false))
+
+;-----------------------------------------------------------------------------
+(s/defn crypt
+  [N m x]
+  (mod-symmetric (* m x) N))
+
+(s/defn decrypt
+  [N m ys]
+  (let
+    [ms  (mod-symmetric m N)
+     ; Q (floor-long (/ (double N) ms))
+     low (mod ys ms)
+     l   (if(same-sign ms low)
+            (- ms low)
+            low)
+     y   (mod (+ ys (* N l)) (* m N))
+     x   (quot y m)
+     ]
+    (spyx (vals->map ys l y x))
+    ))
+
+;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
   [params :- tsk/KeyMap]
   (with-map-vals params [num-bits rand-seed num-rounds verbose]
     (assert (pos-int? num-bits))
     (assert (pos-int? num-rounds))
     (assert (pos-int? rand-seed))
-    (let [random-gen     (Random. rand-seed)
+    (let-spy
+      [random-gen     (Random. rand-seed)
 
-          ; used for text formatting only
-          num-hex-digits (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
-          num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10))))
+       ; used for text formatting only
+       num-hex-digits (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
+       num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10))))
 
-          ; We want slope & offset to be in the central third of all possible values to
-          ; "encourage" lots of bits to flip on each multiply/add operation.
-          N-max          (math/pow-BigInteger 2 num-bits)
-          N-third        (.divide N-max (biginteger 3))
+       ; We want slope & offset to be in the central third of all possible values to
+       ; "encourage" lots of bits to flip on each multiply/add operation.
+       N-max          (math/pow-BigInteger 2 num-bits)
+       N-third        (.divide N-max (biginteger 3))
 
-          offset         (biginteger
-                           (it-> (.nextDouble random-gen)
-                             (* it N-third)
-                             (+ it N-third)))
+       offset         (biginteger
+                        (it-> (.nextDouble random-gen)
+                          (* it N-third)
+                          (+ it N-third)))
 
-          ; ***** MUST BE ODD *****  Thus, it is relatively prime to N-max (power of 2 => even)
-          slope          (biginteger
-                           (it-> (.nextDouble random-gen)
-                             (* it N-third)
-                             (+ it N-third)
-                             (biginteger it)
-                             (if (even? it) ; ensure it is odd
-                                 (.add it (biginteger 1))
-                                 it)))
+       ; ***** MUST BE ODD *****  Thus, it is relatively prime to N-max (power of 2 => even)
+       slope          (biginteger
+                        (it-> (.nextDouble random-gen)
+                          (* it N-third)
+                          (+ it N-third)
+                          (biginteger it)
+                          (if (even? it) ; ensure it is odd
+                              (.add it (biginteger 1))
+                              it)))
 
-          ; #todo extract to a function & write unit tests
-          ; result is vector of [itx isrc] pairs
-          ibit-tx-orig   (let [K             (Math/round (Math/sqrt num-bits))
-                               ibit-seqs     (partition-all K (range num-bits))
-                               ibit-seqs-rev (forv [[i ibit-seq] (indexed ibit-seqs)]
-                                               (if (odd? i)
-                                                 (reverse ibit-seq)
-                                                 ibit-seq))
-                               ibit-shuffled (vec (apply interleave-all ibit-seqs-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-                               itx->isrc     (indexed ibit-shuffled)]
-                           (assert (= (set (range num-bits)) (set ibit-shuffled)))
-                           itx->isrc)]
+       ; #todo extract to a function & write unit tests
+       ; result is vector of [icrypt iplain] pairs, sorted by icrypt
+       ibit-tx-orig   (let [K             (Math/round (Math/sqrt num-bits))
+                            ibit-seqs     (partition-all K (range num-bits))
+                            ibit-seqs-rev (forv [[i ibit-seq] (indexed ibit-seqs)]
+                                            (if (odd? i)
+                                              (decrypt ibit-seq)
+                                              ibit-seq))
+                            ibit-shuffled (vec (apply interleave-all ibit-seqs-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
+                            itx->isrc     (indexed ibit-shuffled)]
+                        (assert (= (set (range num-bits)) (set ibit-shuffled)))
+                        itx->isrc)
+
+       [Q short] (.divideAndRemainder N-max slope)
+       ]
 
       (when-not (<= min-bits num-bits max-bits)
         (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
@@ -107,7 +168,7 @@
         (spyx ibit-tx-orig))
 
       (vals->map num-bits num-rounds num-dec-digits num-hex-digits N-max N-third
-        offset slope ibit-tx-orig
+        offset slope ibit-tx-orig Q short
         ))))
 
 (s/defn new-ctx :- tsk/KeyMap
@@ -139,12 +200,13 @@
     ctx))
 
 ;-----------------------------------------------------------------------------
-(s/defn ^:no-doc vec-shuffle :- tsk/Vec
+(s/defn ^:no-doc vec-shuffle :- tsk/Vec ; #todo: maybe make more general version?
   [ibit-tx-orig :- Matrix
    vec-orig :- tsk/Vec]
   (assert (= (count ibit-tx-orig) (count vec-orig)))
-  (let [vec-shuffled (forv [[itx isrc] ibit-tx-orig]
-                       (get vec-orig isrc ::error))]
+  ; Since `ibit-tx-orig` is sorted by icrypt, we can just go in sequence
+  (let [vec-shuffled (forv [[icrypt iplain] ibit-tx-orig]
+                       (get vec-orig iplain ::error))]
     vec-shuffled))
 
 (s/defn ^:no-doc vec-unshuffle :- tsk/Vec
@@ -160,9 +222,9 @@
         vec-orig    (vec
                       (persistent!
                         (reduce
-                          (fn [cum [itx isrc]]
-                            (let [tx-val (get vec-shuffled itx ::error2)]
-                              (assoc! cum isrc tx-val)))
+                          (fn [cum [icrypt iplain]]
+                            (let [tx-val (get vec-shuffled icrypt ::error2)]
+                              (assoc! cum iplain tx-val)))
                           init-result
                           ibit-tx-orig)))]
     vec-orig))
@@ -185,18 +247,44 @@
       (vec-unshuffle ibit-tx-orig it)
       (math/binary-chars->BigInteger it))))
 
-(s/defn ^:no-doc encrypt-frame :- BigInteger ; #todo need decrypt-frame
+(s/defn ^:no-doc encrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
+  (prn :-----------------------------------------------------------------------------)
   (with-map-vals ctx [N-max slope offset]
-    (when-not (and (<= 0 ival) (< ival N-max))
-      (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    (let [x1 (biginteger ival)
-          x2 (.multiply ^BigInteger x1 slope)
-          x3 (.add ^BigInteger offset x2)
-          x4 (.mod ^BigInteger x3 N-max)
-          x5 (shuffle-int-bits ctx x4)]
-      x5)))
+    #_(when-not (and (<= 0 ival) (< ival N-max))
+        (throw (ex-info "ival out of range" (vals->map ival N-max))))
+    ; calculate mod( y = mx + b ), then shuffle bits
+    (let-spy-pretty
+      [ival   (biginteger ival)
+       mx     (.multiply ^BigInteger ival slope)
+       y      (.add ^BigInteger offset mx)
+       ymod   (.mod ^BigInteger y N-max)
+       result (shuffle-int-bits ctx ymod)
+       ]
+      (biginteger result))))
+
+(def ^:no-doc bi-0 (biginteger 0))
+(def ^:no-doc bi-1 (biginteger 1))
+
+
+(s/defn ^:no-doc decrypt-frame :- BigInteger
+  [ctx :- tsk/KeyMap
+   cuid :- s/Int]
+  (prn :-----------------------------------------------------------------------------)
+  (with-map-vals ctx [N-max slope offset Q short]
+    #_(when-not (and (<= 0 cuid) (< cuid N-max))
+        (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
+    (let-spy-pretty
+      [slope-sym (mod-symmetric slope N-max)
+
+       ymod      (unshuffle-int-bits ctx cuid)
+       yprime    (mod-symmetric (- ymod offset) N-max)
+
+       ]
+      ;  (biginteger x)
+      nil
+      )))
 
 ; Timing (2 rounds):
 ;   32 bits:  15 usec/call
