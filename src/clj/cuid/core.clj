@@ -52,32 +52,6 @@
                   (<= d-ovr-2 it) (- it D))]
     result))
 
-(defn tomod [x N]
-  (it-> (biginteger x)
-    (.mod it N)))
-
-(defn div-rem
-  [numer denom]
-  [(quot numer denom)
-   (mod numer denom)])
-
-(defn ceil-long [x] (long (Math/ceil (double x))))
-(defn floor-long [x] (long (Math/floor (double x))))
-(defn round-long [x] (long (Math/round (double x))))
-(defn trunc-long [x] (long (.longValue (double x))))
-(defn signum-long [x] (cond
-                        (pos? x) +1
-                        (neg? x) -1
-                        :else 0))
-
-(defn same-sign [x y] (cond
-                        (or
-                          (and (pos? x) (pos? y))
-                          (and (neg? x) (neg? y))
-                          (and (zero? x) (zero? y))) true
-
-                        :else false))
-
 ;-----------------------------------------------------------------------------
 (defn modInverse
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.

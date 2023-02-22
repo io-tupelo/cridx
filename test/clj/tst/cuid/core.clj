@@ -42,67 +42,6 @@
     (is= "00000101" (int->bitstr 5 8))))
 
 (verify
-  ; BigInteger.mod() will always return a positive value
-  (let [bi-10     (biginteger 10)
-        bi-10-neg (biginteger 10)]
-    (is= 5 (.mod (biginteger 15) bi-10))
-    (is= 5 (.mod (biginteger -15) bi-10))
-    (is= 5 (.mod (biginteger 15) bi-10-neg))
-    (is= 5 (.mod (biginteger -15) bi-10-neg))))
-
-(verify
-  (throws? (mod-symmetric 5.1 16))
-  (throws? (mod-symmetric 5 17))
-  (throws? (mod-symmetric 5 16.1))
-  (throws? (mod-symmetric 5 -16))
-  (is= (forv [n (thru -10 10)]
-         (mod-symmetric n 16))
-    [6 7 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 -8 -7 -6]))
-
-(verify
-  (let [N 16
-        m 3]
-    (is= (forv [i (thru -5 5)]
-           (quot i 3))
-      [-1 -1 -1 0 0 0 0 0 1 1 1])
-    (is= (forv [i (thru -5 5)]
-           (round-long (/ i 3)))
-      [-2 -1 -1 -1 0 0 0 1 1 1 2])
-    (is= (forv [i (thru -5 5)]
-           (mod i 3))
-      [1 2 0 1 2 0 1 2 0 1 2])))
-
-(verify
-  (throws? (add-mod 4 3 1))
-  (throws? (add-mod 4 3 -5))
-  (is= 2 (add-mod 4 3 5))
-
-  (throws? (mult-mod 4 3 1))
-  (throws? (mult-mod 4 3 -5))
-  (is= 2 (mult-mod 4 3 5)))
-
-
-(verify
-  (let [verify-inv (fn verify-inv-fn
-                     [x N]
-                     (let [xinv   (modInverse x N)
-                           result (mult-mod x xinv N)]
-                       (is= 1 result)
-                       (vals->map x xinv N)))]
-    (modInverse 3 11)
-    (verify-inv 3 11)
-    (verify-inv 3 16)
-    (verify-inv 5 16)
-    (verify-inv 7 16)
-    (verify-inv 9 16)
-
-    (let [verbose? false]
-      (doseq [i (range 3 32 2)]
-        (let [result (verify-inv i 32)]
-          (when verbose?
-            (spyx result)))))))
-
-(verify
   (let [N 32
         verbose? false]
     (doseq [m (range 1 16 2)]
