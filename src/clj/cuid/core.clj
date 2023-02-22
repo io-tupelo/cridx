@@ -2,6 +2,7 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
+    [cuid.modular-arithmetic :as modmath ]
     [tupelo.math :as math]
     [tupelo.schema :as tsk]
     [tupelo.string :as str])
@@ -40,17 +41,6 @@
   [ival :- s/Int
    bits-width :- s/Int]
   (str/join (int->bitchars ival bits-width)))
-
-;-----------------------------------------------------------------------------
-(s/defn mod-symmetric :- s/Int
-  "Like clojure.core/mod, but returns a result symmetric around zero [-D/2..D/2). D must be even and positive."
-  [numer :- s/Int
-   D :- s/Int]
-  (assert (and (int? numer) (int-pos? D) (even? D)))
-  (let [d-ovr-2 (/ D 2)
-        result  (cond-it-> (clojure.core/mod numer D)
-                  (<= d-ovr-2 it) (- it D))]
-    result))
 
 ;-----------------------------------------------------------------------------
 (defn modInverse
@@ -310,10 +300,10 @@
     #_(when-not (and (<= 0 cuid) (< cuid N-max))
         (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
     (let-spy-pretty
-      [slope-sym (mod-symmetric slope N-max)
+      [slope-sym (modmath/mod-symmetric slope N-max)
 
        ymod      (unshuffle-int-bits ctx cuid)
-       yprime    (mod-symmetric (- ymod offset) N-max)
+       yprime    (modmath/mod-symmetric (- ymod offset) N-max)
 
        ]
       ;  (biginteger x)

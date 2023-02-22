@@ -2,11 +2,8 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
-    [tupelo.math :as math]
     [tupelo.schema :as tsk]
-    [tupelo.string :as str])
-  (:import
-    [java.util Random]))
+    ))
 
 (defn ceil-long [x] (long (Math/ceil (double x))))
 (defn floor-long [x] (long (Math/floor (double x))))
@@ -38,13 +35,12 @@
    (mod n d)])
 
 ;-----------------------------------------------------------------------------
-; shortcuts
-
-(s/defn mod-long :- Long
+; shortcuts to aid development & testing
+(s/defn mod-Long :- Long
   [n :- Long
    d :- Long] (clojure.core/mod ^Long n ^Long d))
 
-(s/defn quot-long :- Long
+(s/defn quot-Long :- Long
   [n :- Long
    d :- Long] (clojure.core/quot ^Long n ^Long d))
 
@@ -64,7 +60,7 @@
    N :- Long]
   (assert (and (pos? N) (< 1 N)))
   (it-> (+ a b)
-    (mod it N)))
+    (mod-Long it N)))
 
 (s/defn mult-mod-Long :- Long
   "Multiply two numbers a and b (mod N)."
@@ -73,7 +69,7 @@
    N :- Long]
   (assert (and (pos? N) (< 1 N)))
   (it-> (* a b)
-    (mod it N)))
+    (mod-Long it N)))
 
 (s/defn add-mod-BigInteger :- BigInteger
   "Adds two numbers a and b (mod N)."

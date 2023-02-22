@@ -42,14 +42,14 @@
          (mod i 3))
     [1 2 0 1 2 0 1 2 0 1 2])
 
-  (let [res (mod-long 10 3)]
+  (let [res (mod-Long 10 3)]
     (is= 1 res)
     (is= Long (type res)))
   (let [res (mod-BigInteger (biginteger 10) (biginteger 3))]
     (is= 1 res)
     (is= BigInteger (type res)))
 
-  (let [res (quot-long 10 3)]
+  (let [res (quot-Long 10 3)]
     (is= 3 res)
     (is= Long (type res)))
   (let [res (quot-BigInteger (biginteger 10) (biginteger 3))]
