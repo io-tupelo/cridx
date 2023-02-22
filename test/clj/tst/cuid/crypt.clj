@@ -1,5 +1,5 @@
-(ns tst.cuid.core
-  (:use cuid.core
+(ns tst.cuid.crypt
+  (:use cuid.crypt
         tupelo.core
         tupelo.test)
   (:require
@@ -14,6 +14,47 @@
 (set! *warn-on-reflection* true)
 
 (def visual-debugging? false) ; <= enable to see extra printouts
+
+; does even? work for BigInteger values?
+(verify
+  (isnt (even? (biginteger 1)))
+  (is (even? (biginteger 2))))
+
+(verify
+  (let [bi-five (biginteger 5)]
+    ; How does it cost us to cast to BigInteger?
+    (while false
+      (nl) (prn :5)
+      (crit/quick-bench (biginteger 5)) ;              Long:  7 nanosec
+      (nl) (prn :bi-five)
+      (crit/quick-bench (biginteger bi-five))) ; BigINteger:  4 nanosec
+
+    ; ensure s/validate does what we want
+    (throws? (s/validate BigInteger 5))
+    (s/validate BigInteger bi-five)
+    (s/validate s/Int bi-five)
+    (s/validate s/Int 5)
+
+    ; Make sure it works correctly
+    (throws? (int->bitstr 5 2))
+    (is= "101" (int->bitstr 5 3))
+    (is= "0101" (int->bitstr 5 4))
+    (is= "00000101" (int->bitstr 5 8))))
+
+(verify
+  (let [N 32
+        verbose? false]
+    (doseq [m (range 1 16 2)]
+      (when verbose?
+        (nl)
+        (prn (vals->map m)))
+      (doseq [x (range 16)]
+        (let [c      (crypt N m x)
+              result (decrypt N m c)]
+          (when verbose?
+            (prn (vals->map x c result)))
+          (is= x result))))))
+
 
 (comment
   ;-----------------------------------------------------------------------------
