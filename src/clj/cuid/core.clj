@@ -79,24 +79,70 @@
                         :else false))
 
 ;-----------------------------------------------------------------------------
+(defn modInverse [A M]
+  (let [m0 M
+        y 0
+        x 1]
+    (if (= 1 M)
+      0
+      (loop [x x
+             y y
+             M M
+             A A]
+        (if (< 1 A)
+          (let [q      (quot A M)
+                t      M
+                M-next (mod A M)
+                A-next t
+                t      y
+                y-next (- x (* q y))
+                x-next t]
+            (recur x-next y-next M-next A-next))
+          (if (neg? x)
+            (+ x m0)
+            x))))))
+
 (s/defn crypt
   [N m x]
-  (mod-symmetric (* m x) N))
+  (mod (* m x) N))
 
 (s/defn decrypt
-  [N m ys]
-  (let
-    [ms  (mod-symmetric m N)
-     ; Q (floor-long (/ (double N) ms))
-     low (mod ys ms)
-     l   (if(same-sign ms low)
-            (- ms low)
-            low)
-     y   (mod (+ ys (* N l)) (* m N))
-     x   (quot y m)
+  [N m x]
+  (let [y       (* m x)
+        ym      (mod y N)
+
+        inv-val (modInverse m N)
+
+        t1      (* ym inv-val)
+        t2      (mod t1 N)
+        ]
+    (prn (vals->map x y ym t1 t2))
+    t2))
+
+
+#_(let    ; -spy
+    [
+
+     N-ovr-2 (quot N 2)
+     flip?   (< N-ovr-2 m)
+
+     [ymod m] (if flip?
+                [(- N y)
+                 (- N m)]
+                [y m])
+
+     Q       (floor-long (/ (double N) m))
+     ymax    (* Q m)
+     short   (- N ymax)
+     low     (mod ymod m)
+     lraw    (if (pos? low)
+               (- m low)
+               low)
+     l       (quot lraw short)
+     y       (mod (+ ymod (* N l)) (* m N))
+     x       (quot y m)
      ]
-    (spyx (vals->map ys l y x))
-    ))
+    (spyx (vals->map ymax short y low lraw l y x)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
