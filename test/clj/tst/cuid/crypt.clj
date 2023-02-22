@@ -42,7 +42,7 @@
     (is= "00000101" (int->bitstr 5 8))))
 
 (verify
-  (let [N 32
+  (let [N        32
         verbose? false]
     (doseq [m (range 1 16 2)]
       (when verbose?
