@@ -79,9 +79,10 @@
                         :else false))
 
 ;-----------------------------------------------------------------------------
-(defn modInverse [x N]
+(defn modInverse
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
   Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
+  [x N]
   (assert (and
             (pos? x)
             (pos? N)
@@ -110,22 +111,34 @@
             (+ a N-orig)
             a))))))
 
+(s/defn add-mod :- s/Int
+  "Adds two numbers a and b (mod N)."
+  [a :- s/Int
+   b :- s/Int
+   N :- s/Int]
+  (assert (and (pos? N) (< 1 N)))
+  (it-> (+ a b)
+    (mod it N)))
+
+(s/defn mult-mod :- s/Int
+  "Multiply two numbers a and b (mod N)."
+  [a :- s/Int
+   b :- s/Int
+   N :- s/Int]
+  (assert (and (pos? N) (< 1 N)))
+  (it-> (* a b)
+    (mod it N)))
+
 (s/defn crypt
   [N m x]
-  (mod (* m x) N))
+  (mult-mod m x N))
 
 (s/defn decrypt
-  [N m x]
-  (let [y       (* m x)
-        ym      (mod y N)
-
+  [N m c]
+  (let [; decrypt
         inv-val (modInverse m N)
-
-        t1      (* ym inv-val)
-        t2      (mod t1 N)
-        ]
-    (prn (vals->map x y ym t1 t2))
-    t2))
+        result  (it-> (mult-mod c inv-val N))]
+    result))
 
 
 #_(let    ; -spy

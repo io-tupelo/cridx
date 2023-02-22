@@ -70,65 +70,29 @@
       [-2 -1 -1 -1 0 0 0 1 1 1 2])
     (is= (forv [i (thru -5 5)]
            (mod i 3))
-      [1 2 0 1 2 0 1 2 0 1 2])
+      [1 2 0 1 2 0 1 2 0 1 2])))
 
-    #_(is= (forv [x (range 16)]
-             {:x x :ys (crypt N m x)})
-        [{:x 0, :ys 0}
-         {:x 1, :ys 3}
-         {:x 2, :ys 6}
-         {:x 3, :ys -7}
-         {:x 4, :ys -4}
-         {:x 5, :ys -1}
-         {:x 6, :ys 2}
-         {:x 7, :ys 5}
-         {:x 8, :ys -8}
-         {:x 9, :ys -5}
-         {:x 10, :ys -2}
-         {:x 11, :ys 1}
-         {:x 12, :ys 4}
-         {:x 13, :ys 7}
-         {:x 14, :ys -6}
-         {:x 15, :ys -3}]))
+(verify
+  (throws? (add-mod 4 3 1))
+  (throws? (add-mod 4 3 -5))
+  (is= 2 (add-mod 4 3 5))
 
-
-  #_(let [N 16
-          m 3]
-      (prn :-----------------------------------------------------------------------------)
-      (let [Q     (floor-long (/ N m))
-            P     (* Q m)
-            short (- N P)
-            extra (- m short)
-            unit  (/ extra m)
-            ctx   (vals->map N m Q P short extra unit)
-            ]
-        (prn (vals->map N m Q P short extra unit))
-        (forv [x (thru 0 15)]
-          (decrypt ctx x))))
-
-  #_(let [N 32
-          m 3]
-      (prn :-----------------------------------------------------------------------------)
-      (let [Q     (floor-long (/ N m))
-            P     (* Q m)
-            short (- N P)
-            extra (- m short)
-            unit  (/ extra m)
-            ctx   (vals->map N m Q P short extra unit)
-            ]
-        (prn (vals->map N m Q P short extra unit))
-        (forv [x (thru 0 N)]
-          (decrypt ctx x))))
+  (throws? (mult-mod 4 3 1))
+  (throws? (mult-mod 4 3 -5))
+  (is= 2 (mult-mod 4 3 5))
 
   )
-(defn verify-inv
-  [a N]
-  (let [inv-val (modInverse a N)
-        prod    (mod (* inv-val a) N)]
-    (is= 1 prod)
-    (vals->map a inv-val N)))
 
-(verify-focus
+
+
+(defn verify-inv
+  [x N]
+  (let [xinv   (modInverse x N)
+        result (mult-mod x xinv N)]
+    (is= 1 result)
+    (vals->map x xinv N)))
+
+(verify
   (spyx (modInverse 3 11))
   (spyx (verify-inv 3 11))
 
@@ -143,11 +107,16 @@
     (spyx (verify-inv i 32)))
 
   (prn :-----------------------------------------------------------------------------)
-  (doseq [m (range 1 16 2)]
-    (nl)
-    (prn (vals->map m))
-    (doseq [x (range 16)]
-      (is= x (decrypt 32 5 x))))
+  (let [N 32]
+    (doseq [m (range 1 16 2)]
+      (nl)
+      (prn (vals->map m))
+      (doseq [x (range 16)]
+        (let [c      (crypt N m x)
+              result (decrypt N m c)]
+          (prn (vals->map x c result))
+          (is= x result)
+          ))))
 
   )
 
