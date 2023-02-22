@@ -79,47 +79,42 @@
 
   (throws? (mult-mod 4 3 1))
   (throws? (mult-mod 4 3 -5))
-  (is= 2 (mult-mod 4 3 5))
+  (is= 2 (mult-mod 4 3 5)))
 
-  )
-
-
-
-(defn verify-inv
-  [x N]
-  (let [xinv   (modInverse x N)
-        result (mult-mod x xinv N)]
-    (is= 1 result)
-    (vals->map x xinv N)))
 
 (verify
-  (spyx (modInverse 3 11))
-  (spyx (verify-inv 3 11))
+  (let [verify-inv (fn verify-inv-fn
+                     [x N]
+                     (let [xinv   (modInverse x N)
+                           result (mult-mod x xinv N)]
+                       (is= 1 result)
+                       (vals->map x xinv N)))]
+    (modInverse 3 11)
+    (verify-inv 3 11)
+    (verify-inv 3 16)
+    (verify-inv 5 16)
+    (verify-inv 7 16)
+    (verify-inv 9 16)
 
-  (nl)
-  (spyx (verify-inv 3 16))
-  (spyx (verify-inv 5 16))
-  (spyx (verify-inv 7 16))
-  (spyx (verify-inv 9 16))
+    (let [verbose? false]
+      (doseq [i (range 3 32 2)]
+        (let [result (verify-inv i 32)]
+          (when verbose?
+            (spyx result)))))))
 
-  (nl)
-  (doseq [i (range 3 32 2)]
-    (spyx (verify-inv i 32)))
-
-  (prn :-----------------------------------------------------------------------------)
-  (let [N 32]
+(verify
+  (let [N 32
+        verbose? false]
     (doseq [m (range 1 16 2)]
-      (nl)
-      (prn (vals->map m))
+      (when verbose?
+        (nl)
+        (prn (vals->map m)))
       (doseq [x (range 16)]
         (let [c      (crypt N m x)
               result (decrypt N m c)]
-          (prn (vals->map x c result))
-          (is= x result)
-          ))))
-
-  )
-
+          (when verbose?
+            (prn (vals->map x c result)))
+          (is= x result))))))
 
 
 (comment

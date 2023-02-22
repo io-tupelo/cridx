@@ -83,10 +83,7 @@
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
   Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
   [x N]
-  (assert (and
-            (pos? x)
-            (pos? N)
-            (< x N)))
+  (assert (and (pos? x) (pos? N) (< x N)))
   (let [N-orig N
         a      1
         b      0]
@@ -102,11 +99,7 @@
                 q      (quot x n)
                 a-next b
                 b-next (- a (* q b))]
-            (recur
-              x-next
-              N-next
-              a-next
-              b-next))
+            (recur x-next N-next a-next b-next))
           (if (neg? a)
             (+ a N-orig)
             a))))))
