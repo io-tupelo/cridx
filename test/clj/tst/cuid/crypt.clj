@@ -15,11 +15,6 @@
 
 (def visual-debugging? false) ; <= enable to see extra printouts
 
-; does even? work for BigInteger values?
-(verify
-  (isnt (even? (biginteger 1)))
-  (is (even? (biginteger 2))))
-
 (verify
   (let [bi-five (biginteger 5)]
     ; How does it cost us to cast to BigInteger?

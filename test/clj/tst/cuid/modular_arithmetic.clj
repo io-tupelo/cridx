@@ -14,6 +14,26 @@
 
 (def verbose? false) ; <= enable to see extra printouts
 
+(def bi-3 (biginteger 3))
+(def bi-10 (biginteger 10))
+
+; does even? work for BigInteger values?
+(verify
+  ; even? works for both
+  (isnt (even? 1))
+  (is (even? 2))
+  (isnt (even? bi-3))
+  (is (even? bi-10))
+
+  ; What is the return type for quot/mod re Long vs BigInteger?
+  (is= Long (type (quot 10 3)))
+  (is= Long (type (mod 10 3)))
+  (is= clojure.lang.BigInt (type (quot bi-10 bi-3)))
+  (is= clojure.lang.BigInt (type (mod bi-10 bi-3)))
+  (is= java.math.BigInteger (type (quot-BigInteger bi-10 bi-3)))
+  (is= java.math.BigInteger (type (mod-BigInteger bi-10 bi-3)))
+  )
+
 (verify
   (is= 5 (ceil-long 4.5))
   (is= 4 (floor-long 4.5))

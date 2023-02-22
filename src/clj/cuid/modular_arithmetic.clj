@@ -5,6 +5,8 @@
     [tupelo.schema :as tsk]
     ))
 
+; #todo consider converting all from java.math.BigInteger -> clojure.lang.BigInt
+
 (defn ceil-long [x] (long (Math/ceil (double x))))
 (defn floor-long [x] (long (Math/floor (double x))))
 (defn round-long [x] (long (Math/round (double x))))
