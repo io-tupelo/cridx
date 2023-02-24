@@ -116,7 +116,7 @@
 ;-----------------------------------------------------------------------------
 (verify
 
-  ; enable to see printout
+  ; vvv enable to see printout
   (when false
     (let [ctx (new-ctx {:num-bits   32
                         :num-rounds 5})]
