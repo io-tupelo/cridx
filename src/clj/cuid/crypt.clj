@@ -231,6 +231,15 @@
         ctx            (new-ctx-impl params)]
     ctx))
 
+(s/defn iterate-n :- s/Any
+  [N  :- s/Int
+   f :- tsk/Fn
+   x :- s/Any]
+  (assert (int-nonneg? N))
+  (last
+    (take (inc N) ; (take 0 <seq>) returns [], so we need (inc N) here to get a result
+      (iterate f x))))
+
 ;-----------------------------------------------------------------------------
 ; Timing {:num-rounds 5  :shuffle-bits? false}
 ;   32 bits:  10 usec/call
@@ -247,15 +256,15 @@
   [ctx :- tsk/KeyMap
    ival :- s/Int]
   (prof/with-timer-accum :idx->cuid
-    (nth
-      (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
-      (grab :num-rounds ctx))))
+    (iterate-n (grab :num-rounds ctx)
+      #(encrypt-frame ctx %)
+      ival)))
 
 (s/defn cuid->idx :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
   (prof/with-timer-accum :cuid->idx
-    (nth
-      (iterate #(decrypt-frame ctx %) cuid)
-      (grab :num-rounds ctx))))
+    (iterate-n (grab :num-rounds ctx)
+      #(decrypt-frame ctx %)
+      cuid)))
 

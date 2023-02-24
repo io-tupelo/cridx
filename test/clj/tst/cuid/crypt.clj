@@ -117,7 +117,7 @@
 (verify
 
   ; enable to see printout
-  (when true
+  (when false
     (let [ctx (new-ctx {:num-bits   32
                         :num-rounds 5})]
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
@@ -150,8 +150,8 @@
               cuid-vals   (cp/pmap :builtin #(idx->cuid ctx %) idx-vals)
               idx-decrypt (cp/pmap :builtin #(cuid->idx ctx %) cuid-vals)]
           (is-set= idx-vals cuid-vals) ; all vals present
-          (spyx idx-vals )
-          (spyx cuid-vals)
+          ; (spyx idx-vals )
+          ; (spyx cuid-vals)
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
           (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
           ))))
@@ -168,57 +168,16 @@
             (is-set= nums-orig nums-shuffled)))))))
 
 (verify
-  (when false ; encrypt-only timing printouts disabled by default
-    (nl)
-
-    (tsk/with-validation-disabled
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 32})]
-        (prn :timing-1000-32)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 64})]
-        (prn :timing-1000-64)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 128})]
-        (prn :timing-1000-128)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 256})]
-        (prn :timing-1000-256)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 512})]
-        (prn :timing-1000-512)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 1024})]
-        (prn :timing-1000-1024)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (idx->cuid ctx i)))
-      (prof/print-profile-stats)
-
-      )))
+  (let [times-2 #(* 2 %)]
+    (is= [] (take 0 (range 9)))
+    (is= 1 (iterate-n 0 times-2 1))
+    (is= 2 (iterate-n 1 times-2 1))
+    (is= 4 (iterate-n 2 times-2 1))
+    (is= 8 (iterate-n 3 times-2 1))
+    (is= 256 (iterate-n 8 times-2 1))))
 
 (verify
-  (when true ; round-trip timing printouts disabled by default
+  (when false ; round-trip timing printouts disabled by default
     (nl)
 
     (tsk/with-validation-disabled
