@@ -3,12 +3,10 @@
         tupelo.core
         tupelo.test)
   (:require
-    [com.climate.claypoole :as cp]
-    [criterium.core :as crit]
     [tupelo.math :as math]
-    [tupelo.profile :as prof]
-    [tupelo.schema :as tsk]
-    ))
+    )
+  (:import
+    [clojure.lang BigInt]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,9 +43,9 @@
   (is= 4 (trunc-long 4.4))
   (is= -4 (trunc-long -4.4))
 
-  (is= 1 (signum-long 4.4))
-  (is= 0 (signum-long 0))
-  (is= -1 (signum-long -4.4))
+  (is= 1 (signum 4.4))
+  (is= 0 (signum 0))
+  (is= -1 (signum -4.4))
 
   (is (same-sign 1 1))
   (is (same-sign -1 -1))
@@ -68,6 +66,9 @@
   (let [res (mod-BigInteger (biginteger 10) (biginteger 3))]
     (is= 1 res)
     (is= BigInteger (type res)))
+  (let [res (mod-BigInt (bigint 10) (bigint 3))]
+    (is= 1 res)
+    (is= BigInt (type res)))
 
   (let [res (quot-Long 10 3)]
     (is= 3 res)
@@ -79,12 +80,22 @@
   ; BigInteger.mod() will always return a positive value
   (let [bi-10     (biginteger 10)
         bi-10-neg (biginteger 10)
-        bi-15 (biginteger 15)
+        bi-15     (biginteger 15)
         bi-15-neg (biginteger -15)]
     (is= 5 (mod-BigInteger bi-15 bi-10))
     (is= 5 (mod-BigInteger bi-15-neg bi-10))
     (is= 5 (mod-BigInteger bi-15 bi-10-neg))
-    (is= 5 (mod-BigInteger bi-15-neg bi-10-neg))))
+    (is= 5 (mod-BigInteger bi-15-neg bi-10-neg)))
+
+  ; BigInt.mod() will always return a positive value
+  (let [bi-10     (bigint 10)
+        bi-10-neg (bigint 10)
+        bi-15     (bigint 15)
+        bi-15-neg (bigint -15)]
+    (is= 5 (mod-BigInt bi-15 bi-10))
+    (is= 5 (mod-BigInt bi-15-neg bi-10))
+    (is= 5 (mod-BigInt bi-15 bi-10-neg))
+    (is= 5 (mod-BigInt bi-15-neg bi-10-neg))))
 
 (verify
   (throws? (add-mod-Long 7 9 1))
@@ -96,18 +107,30 @@
   (is= 3 (mult-mod-Long 7 9 5))
 
   ; Note that Clojure can compare (long <n>) and (biginteger <n>)
-  (let [bi-1 (biginteger 1)
+  (let [bi-1    (biginteger 1)
         bi-5neg (biginteger -5)
-        bi-5 (biginteger 5)
-        bi-7 (biginteger 7)
-        bi-9 (biginteger 9)]
-  (throws? (add-mod-BigInteger bi-7 bi-9 bi-1))
-  (throws? (add-mod-BigInteger bi-7 bi-9 bi-5neg))
-  (is= 1 (add-mod-BigInteger   bi-7 bi-9 bi-5))
+        bi-5    (biginteger 5)
+        bi-7    (biginteger 7)
+        bi-9    (biginteger 9)]
+    (throws? (add-mod-BigInteger bi-7 bi-9 bi-1))
+    (throws? (add-mod-BigInteger bi-7 bi-9 bi-5neg))
+    (is= 1 (add-mod-BigInteger bi-7 bi-9 bi-5))
 
-  (throws? (mult-mod-BigInteger bi-7 bi-9 bi-1))
-  (throws? (mult-mod-BigInteger bi-7 bi-9 bi-5neg))
-  (is= 3   (mult-mod-BigInteger bi-7 bi-9 bi-5))))
+    (throws? (mult-mod-BigInteger bi-7 bi-9 bi-1))
+    (throws? (mult-mod-BigInteger bi-7 bi-9 bi-5neg))
+    (is= 3 (mult-mod-BigInteger bi-7 bi-9 bi-5)))
+
+  ; Note that Clojure can compare (long <n>) and (bigint <n>)
+  (do
+    (throws? (add-mod-BigInt 7 9 1))
+    (throws? (add-mod-BigInt 7 9 -5))
+    (is= 1 (add-mod-BigInt 7 9 5))
+
+    (throws? (mult-mod-BigInt 7 9 1))
+    (throws? (mult-mod-BigInt 7 9 -5))
+    (is= 3 (mult-mod-BigInt 7 9 5))))
+
+; #todo need tests for quot-BigInteger & quot-BigInt
 
 ;-----------------------------------------------------------------------------
 (verify

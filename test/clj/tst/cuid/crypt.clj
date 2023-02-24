@@ -109,14 +109,14 @@
       (let [ctx             (new-ctx {:num-bits num-bits})
             N-max           (grab :N-max ctx)
             orig-vals       (range N-max)
-            shuffled-vals   (mapv #(shuffle-int-bits ctx %) orig-vals)
-            unshuffled-vals (mapv #(unshuffle-int-bits ctx %) shuffled-vals)]
+            shuffled-vals   (mapv #(shuffle-bits-BigInteger ctx %) orig-vals)
+            unshuffled-vals (mapv #(unshuffle-bits-BigInteger ctx %) shuffled-vals)]
         (is-set= orig-vals shuffled-vals)
         (is= orig-vals unshuffled-vals))))
 
   #_(verify-focus
-      (with-redefs [shuffle-int-bits   (fn [x y] y)
-                    unshuffle-int-bits (fn [x y] y)]
+      (with-redefs [shuffle-bits-BigInteger   (fn [x y] y)
+                    unshuffle-bits-BigInteger (fn [x y] y)]
         (doseq [ival ;  [3]
                 (range 16)
                 ]

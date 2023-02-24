@@ -2,12 +2,14 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
-    [cuid.modular-arithmetic :as modmath ]
+    [cuid.modular-arithmetic :as mod]
     [tupelo.math :as math]
     [tupelo.schema :as tsk]
     [tupelo.string :as str])
   (:import
     [java.util Random]))
+
+(def Matrix [[s/Any]])
 
 ;-----------------------------------------------------------------------------
 (def ^:no-doc min-bits 4) ; NOTE! IMPORTANT! 4 bits minimum due to shuffle step
@@ -17,8 +19,6 @@
 (def ^:no-doc bi-1 (biginteger 1))
 
 ;-----------------------------------------------------------------------------
-(def Matrix [[s/Any]])
-
 (s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math
   [ival :- s/Int
    bits-width :- s/Int]
@@ -36,34 +36,34 @@
 
 (s/defn crypt
   [N m x]
-  (modmath/mult-mod-Long m x N))
+  (mod/mult-mod-Long m x N))
 
 (s/defn decrypt
   [N m c]
-  (let [minv (modmath/modInverse m N)
-        result (modmath/mult-mod-Long c minv N)]
+  (let [minv   (mod/modInverse m N)
+        result (mod/mult-mod-Long c minv N)]
     result))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc vec-shuffle :- tsk/Vec ; #todo: maybe make more general version?
-  [ibit-tx-orig :- Matrix
+  [bit-shuffle-idxs :- Matrix
    vec-orig :- tsk/Vec]
-  (assert (= (count ibit-tx-orig) (count vec-orig)))
-  ; Since `ibit-tx-orig` is sorted by icrypt, we can just go in sequence
-  (let [vec-shuffled (forv [[icrypt iplain] ibit-tx-orig]
+  (assert (= (count bit-shuffle-idxs) (count vec-orig)))
+  ; Since `bit-shuffle-idxs` is sorted by icrypt, we can just go in sequence
+  (let [vec-shuffled (forv [[icrypt iplain] bit-shuffle-idxs]
                        (get vec-orig iplain ::error))]
     vec-shuffled))
 
 (s/defn ^:no-doc vec-unshuffle :- tsk/Vec
-  [ibit-tx-orig :- Matrix
+  [bit-shuffle-idxs :- Matrix
    vec-shuffled :- tsk/Vec]
-  (assert (= (count ibit-tx-orig) (count vec-shuffled)))
+  (assert (= (count bit-shuffle-idxs) (count vec-shuffled)))
 
   ; Use of transient/assoc!/persistent! may only be a 2-5x speedup, may not be worth keeping
   ; See:  https://tech.redplanetlabs.com/2020/09/02/clojure-faster/#clojure-transients
   ;       https://clojure.org/reference/transients
   (let [init-result (transient
-                      (vec (repeat (count ibit-tx-orig) ::error1)))
+                      (vec (repeat (count bit-shuffle-idxs) ::error1)))
         vec-orig    (vec
                       (persistent!
                         (reduce
@@ -71,26 +71,26 @@
                             (let [tx-val (get vec-shuffled icrypt ::error2)]
                               (assoc! cum iplain tx-val)))
                           init-result
-                          ibit-tx-orig)))]
+                          bit-shuffle-idxs)))]
     vec-orig))
 
 ;-----------------------------------------------------------------------------
-(s/defn ^:no-doc shuffle-int-bits :- BigInteger
+(s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits ibit-tx-orig]
+  (with-map-vals ctx [num-bits bit-shuffle-idxs]
     (it-> ival
       (int->bitchars it num-bits)
-      (vec-shuffle ibit-tx-orig it)
+      (vec-shuffle bit-shuffle-idxs it)
       (math/binary-chars->BigInteger it))))
 
-(s/defn ^:no-doc unshuffle-int-bits :- BigInteger
+(s/defn ^:no-doc unshuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits ibit-tx-orig]
+  (with-map-vals ctx [num-bits bit-shuffle-idxs]
     (it-> ival
       (int->bitchars it num-bits)
-      (vec-unshuffle ibit-tx-orig it)
+      (vec-unshuffle bit-shuffle-idxs it)
       (math/binary-chars->BigInteger it))))
 
 ;-----------------------------------------------------------------------------
@@ -102,105 +102,95 @@
     #_(when-not (and (<= 0 ival) (< ival N-max))
         (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
-    (let-spy-pretty
+    (let  ; -spy-pretty
       [ival   (biginteger ival)
-       mx     (.multiply ^BigInteger ival slope)
-       y      (.add ^BigInteger offset mx)
-       ymod   (.mod ^BigInteger y N-max)
-       result (shuffle-int-bits ctx ymod)
-       ]
-      (biginteger result))))
+       result (it-> ival
+                (.multiply ^BigInteger it slope)
+                (.add ^BigInteger it offset)
+                (mod/mod-BigInteger it N-max)
+                (shuffle-bits-BigInteger ctx it))]
+      result)))
 
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
   (prn :-------------------------------------------------------)
-  (with-map-vals ctx [N-max slope offset Q short]
+  (with-map-vals ctx [N-max slope offset]
     #_(when-not (and (<= 0 cuid) (< cuid N-max))
         (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
     (let-spy-pretty
-      [slope-sym (modmath/mod-symmetric slope N-max)
+      [
 
-       ymod      (unshuffle-int-bits ctx cuid)
-       yprime    (modmath/mod-symmetric (- ymod offset) N-max)
-
+       ymod (unshuffle-bits-BigInteger ctx cuid)
        ]
-      ;  (biginteger x)
-      nil
-      )))
+      nil)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
   [params :- tsk/KeyMap]
-  (with-map-vals params [num-bits rand-seed num-rounds verbose]
+  (with-map-vals params [num-bits rand-seed num-rounds verbose?]
     (assert (pos-int? num-bits))
     (assert (pos-int? num-rounds))
     (assert (pos-int? rand-seed))
     (let-spy
-      [random-gen     (Random. rand-seed)
+      [random-gen       (Random. rand-seed)
 
        ; used for text formatting only
-       num-hex-digits (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
-       num-dec-digits (long (Math/ceil (/ num-bits (math/log2 10))))
+       num-digits-hex   (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
+       num-digits-dec   (long (Math/ceil (/ num-bits (math/log2 10))))
 
        ; We want slope & offset to be in the central third of all possible values to
        ; "encourage" lots of bits to flip on each multiply/add operation.
-       N-max          (math/pow-BigInteger 2 num-bits)
-       N-third        (.divide N-max (biginteger 3))
+       N-max            (math/pow-BigInteger 2 num-bits)
+       N-third          (.divide N-max (biginteger 3))
 
-       offset         (biginteger
-                        (it-> (.nextDouble random-gen)
-                          (* it N-third)
-                          (+ it N-third)))
+       offset           (biginteger
+                          (it-> (.nextDouble random-gen)
+                            (* it N-third)
+                            (+ it N-third)))
 
        ; ***** MUST BE ODD *****  Thus, it is relatively prime to N-max (power of 2 => even)
-       slope          (biginteger
-                        (it-> (.nextDouble random-gen)
-                          (* it N-third)
-                          (+ it N-third)
-                          (biginteger it)
-                          (if (even? it) ; ensure it is odd
-                              (.add it (biginteger 1))
-                              it)))
+       slope            (biginteger
+                          (it-> (.nextDouble random-gen)
+                            (* it N-third)
+                            (+ it N-third)
+                            (biginteger it)
+                            (if (even? it) ; ensure it is odd
+                                (.add it (biginteger 1))
+                                it)))
 
        ; #todo extract to a function & write unit tests
        ; result is vector of [icrypt iplain] pairs, sorted by icrypt
-       ibit-tx-orig   (let [K             (Math/round (Math/sqrt num-bits))
-                            ibit-seqs     (partition-all K (range num-bits))
-                            ibit-seqs-rev (forv [[i ibit-seq] (indexed ibit-seqs)]
-                                            (if (odd? i)
-                                              (decrypt ibit-seq)
-                                              ibit-seq))
-                            ibit-shuffled (vec (apply interleave-all ibit-seqs-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-                            itx->isrc     (indexed ibit-shuffled)]
-                        (assert (= (set (range num-bits)) (set ibit-shuffled)))
-                        itx->isrc)
-
-       [Q short] (.divideAndRemainder N-max slope)
-       ]
-
-      (when-not (<= min-bits num-bits max-bits)
-        (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
+       bit-shuffle-idxs (let [K                 (Math/round (Math/sqrt num-bits))
+                              bit-idxs-2d       (partition-all K (range num-bits))
+                              bit-idxs-2d-rev   (forv [[irow ibit-seq] (indexed bit-idxs-2d)]
+                                                  (if (odd? irow)
+                                                    (reverse ibit-seq)
+                                                    ibit-seq))
+                              bit-idxs-shuffled (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
+                              >>                (assert (= (set (range num-bits)) (set bit-idxs-shuffled)))
+                              bit-idxs-pairs    (indexed bit-idxs-shuffled)]
+                          bit-idxs-pairs)]
 
       ;-----------------------------------------------------------------------------
       ; sanity checks
-      (assert (pos-int? num-rounds))
+      (when-not (<= min-bits num-bits max-bits)
+        (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
       (assert (biginteger? offset))
       (assert (biginteger? slope))
       (when-not (odd? slope) ; odd => relatively prime to 2^N
         (throw (ex-info "slope failed even test" (vals->map slope))))
 
-      (when verbose
+      (when verbose?
         (spyx num-bits)
-        (spyx num-hex-digits)
+        (spyx num-digits-hex)
         (spyx N-max)
         (spyx [offset (math/BigInteger->binary-str offset)])
         (spyx [slope (math/BigInteger->binary-str slope)])
-        (spyx ibit-tx-orig))
+        (spyx bit-shuffle-idxs))
 
-      (vals->map num-bits num-rounds num-dec-digits num-hex-digits N-max N-third
-        offset slope ibit-tx-orig Q short
-        ))))
+      (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max N-third
+        offset slope bit-shuffle-idxs))))
 
 (s/defn new-ctx :- tsk/KeyMap
   "Creates a new CUID context map. Usage:
@@ -209,21 +199,20 @@
 
   where <params-map> is of the form:
 
-        {:num-bits     <n>      ; REQUIRED (minimum: 4)
-         :rand-seed    <long>   ; the CUID encryption key (default: randomized)
-         :num-rounds   <int>    ; must be a positive int  (default: 2)
-         :verbose      false    ; enable for dbg prints
-        }
-  "
+        {:num-bits     <long>  ; REQUIRED:  (minimum: 4): input/output integers in [0..2^n)
+         :rand-seed    <long>  ; optional:  encryption key (default: randomized)
+         :num-rounds   <long>  ; optional:  positive int (default: 2)
+         :verbose?     false   ; optional:  enable for dbg prints (default: false)
+        } "
   [arg :- tsk/KeyMap]
   (s/validate {:num-bits                    s/Int
                (s/optional-key :rand-seed)  s/Int
                (s/optional-key :num-rounds) s/Int
-               (s/optional-key :verbose)    s/Bool}
+               (s/optional-key :verbose?)   s/Bool}
     arg)
   (let [params-default {:rand-seed  (Math/abs (.nextLong (Random.))) ; positive for simplicity
                         :num-rounds 2
-                        :verbose    false}
+                        :verbose?   false}
         params         (glue params-default (if (int? arg)
                                               {:num-bits arg}
                                               arg))

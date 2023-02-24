@@ -3,17 +3,24 @@
   (:require
     [schema.core :as s]
     [tupelo.schema :as tsk]
-    ))
+    )
+  (:import
+    [clojure.lang BigInt]))
 
-; #todo consider converting all from java.math.BigInteger -> clojure.lang.BigInt
-
+; #todo move to i
+;   tupelo.math.mod.long
+;   tupelo.math.mod.BigInteger
+;   tupelo.math.mod.BigInt
+;
+;-----------------------------------------------------------------------------
+; #todo need BigInt version?
 (defn ceil-long [x] (long (Math/ceil (double x))))
 (defn floor-long [x] (long (Math/floor (double x))))
 (defn round-long [x] (long (Math/round (double x))))
 (defn trunc-long [x] (long (.longValue (double x))))
 
-(s/defn signum-long :- Long
-  "Returns a Long value, either -1, 0, or +1, to indicate the sign of the input. "
+(s/defn signum :- s/Int
+  "Returns either -1, 0, or +1, to indicate the sign of the input. "
   [x :- s/Num]
   (cond
     (pos? x) +1
@@ -48,6 +55,14 @@
   [n :- BigInteger
    d :- BigInteger] (.divide ^BigInteger n ^BigInteger d))
 
+(s/defn mod-BigInt :- BigInt
+  [n :- s/Int
+   d :- s/Int] (mod (bigint n) (bigint d)))
+
+(s/defn quot-BigInt :- BigInt
+  [n :- s/Int
+   d :- s/Int] (quot (bigint n) (bigint d)))
+
 ;-----------------------------------------------------------------------------
 (s/defn add-mod-Long :- Long
   "Adds two numbers a and b (mod N)."
@@ -73,7 +88,7 @@
    b :- BigInteger
    N :- BigInteger]
   (assert (and (pos? N) (< 1 N)))
-  (it-> (.add ^BigInteger  a ^BigInteger b)
+  (it-> (.add ^BigInteger a ^BigInteger b)
     (mod-BigInteger it N)))
 
 (s/defn mult-mod-BigInteger :- BigInteger
@@ -85,21 +100,40 @@
   (it-> (.multiply ^BigInteger a ^BigInteger b)
     (mod-BigInteger it N)))
 
+(s/defn add-mod-BigInt :- BigInt
+  "Adds two numbers a and b (mod N)."
+  [a :- s/Int
+   b :- s/Int
+   N :- s/Int]
+  (assert (and (pos? N) (< 1 N)))
+  (it-> (+ a b)
+    (mod-BigInt it N)))
+
+(s/defn mult-mod-BigInt :- BigInt
+  "Multiply two numbers a and b (mod N)."
+  [a :- s/Int
+   b :- s/Int
+   N :- s/Int]
+  (assert (and (pos? N) (< 1 N)))
+  (it-> (*  a b)
+    (mod-BigInt it N)))
+
 ;-----------------------------------------------------------------------------
 (s/defn mod-symmetric :- s/Int
-  "Like clojure.core/mod, but returns a result symmetric around zero [-D/2..D/2). D must be even and positive."
-  [numer :- s/Int
-   D :- s/Int]
-  (assert (and (int? numer) (int-pos? D) (even? D)))
-  (let [d-ovr-2 (/ D 2)
-        result  (cond-it-> (clojure.core/mod numer D)
-                  (<= d-ovr-2 it) (- it D))]
+  "Like clojure.core/mod, but returns a result symmetric around zero [-N/2..N/2). N must be even and positive."
+  [i :- s/Int
+   N :- s/Int]
+  (assert (and (int? i) (int-pos? N) (even? N)))
+  (let [d-ovr-2 (/ N 2)
+        result  (cond-it-> (mod i N)
+                  (<= d-ovr-2 it) (- it N))]
     result))
 
-(defn modInverse
+(s/defn modInverse :- s/Int
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
   Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
-  [x N]
+  [x :- s/Int
+   N :- s/Int]
   (assert (and (pos? x) (pos? N) (< x N)))
   (let [N-orig N
         a      1
