@@ -78,18 +78,13 @@
 
   ; BigInteger.mod() will always return a positive value
   (let [bi-10     (biginteger 10)
-        bi-10-neg (biginteger 10)]
-    (is= 5 (mod-BigInteger (biginteger 15) bi-10))
-    (is= 5 (mod-BigInteger (biginteger -15) bi-10))
-    (is= 5 (mod-BigInteger (biginteger 15) bi-10-neg))
-    (is= 5 (mod-BigInteger (biginteger -15) bi-10-neg)))
-
-
-  (is= [3 1] (div-mod 10 3))
-  ; vvv Given the below results, probably best not to use for any negative args
-  (is= [-3 2] (div-mod -10 3))
-  (is= [-3 -2] (div-mod 10 -3))
-  (is= [3 -1] (div-mod -10 -3)))
+        bi-10-neg (biginteger 10)
+        bi-15 (biginteger 15)
+        bi-15-neg (biginteger -15)]
+    (is= 5 (mod-BigInteger bi-15 bi-10))
+    (is= 5 (mod-BigInteger bi-15-neg bi-10))
+    (is= 5 (mod-BigInteger bi-15 bi-10-neg))
+    (is= 5 (mod-BigInteger bi-15-neg bi-10-neg))))
 
 (verify
   (throws? (add-mod-Long 7 9 1))
@@ -101,13 +96,18 @@
   (is= 3 (mult-mod-Long 7 9 5))
 
   ; Note that Clojure can compare (long <n>) and (biginteger <n>)
-  (throws? (add-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger 1)))
-  (throws? (add-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger -5)))
-  (is= 1 (add-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger 5)))
+  (let [bi-1 (biginteger 1)
+        bi-5neg (biginteger -5)
+        bi-5 (biginteger 5)
+        bi-7 (biginteger 7)
+        bi-9 (biginteger 9)]
+  (throws? (add-mod-BigInteger bi-7 bi-9 bi-1))
+  (throws? (add-mod-BigInteger bi-7 bi-9 bi-5neg))
+  (is= 1 (add-mod-BigInteger   bi-7 bi-9 bi-5))
 
-  (throws? (mult-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger 1)))
-  (throws? (mult-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger -5)))
-  (is= 3 (mult-mod-BigInteger (biginteger 7) (biginteger 9) (biginteger 5))))
+  (throws? (mult-mod-BigInteger bi-7 bi-9 bi-1))
+  (throws? (mult-mod-BigInteger bi-7 bi-9 bi-5neg))
+  (is= 3   (mult-mod-BigInteger bi-7 bi-9 bi-5))))
 
 ;-----------------------------------------------------------------------------
 (verify

@@ -30,12 +30,6 @@
       (and (neg? x) (neg? y))
       (and (zero? x) (zero? y)))))
 
-(defn div-mod
-  "Given 2 args [n d], returns a 2-Vec [<quot> <mod>]"
-  [n d]
-  [(quot n d)
-   (mod n d)])
-
 ;-----------------------------------------------------------------------------
 ; shortcuts to aid development & testing
 (s/defn mod-Long :- Long
