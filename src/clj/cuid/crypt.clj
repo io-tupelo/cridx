@@ -99,11 +99,10 @@
    ival :- s/Int]
   (with-map-vals ctx [N-max slope offset]
     (when-not (and (<= 0 ival) (< ival N-max))
-        (throw (ex-info "ival out of range" (vals->map ival N-max))))
+      (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
     (let  ; -spy-pretty
-      [ival   (biginteger ival)
-       result (it-> ival
+      [result (it-> (biginteger ival)
                 (.multiply ^BigInteger it slope)
                 (.add ^BigInteger it offset)
                 (mod/mod-BigInteger it N-max)
@@ -113,15 +112,15 @@
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
-  ; (prn :-------------------------------------------------------)
-  (with-map-vals ctx [N-max slope offset]
+  (with-map-vals ctx [N-max slope slope-inv offset]
     (when-not (and (<= 0 cuid) (< cuid N-max))
-        (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
-    (let [
-
-       ymod (unshuffle-bits-BigInteger ctx cuid)
-       ]
-      nil)))
+      (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
+    (let [result (it-> (biginteger cuid)
+                   (unshuffle-bits-BigInteger ctx it)
+                   (.subtract ^BigInteger it ^BigInteger offset)
+                   (.multiply ^BigInteger it ^BigInteger slope-inv)
+                   (mod/mod-BigInteger it N-max))]
+      result)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -157,6 +156,9 @@
                                 (.add it (biginteger 1))
                                 it)))
 
+       ; compute the "modular inverse" of slope
+       slope-inv        (biginteger (mod/modInverse slope N-max))
+
        ; #todo extract to a function & write unit tests
        ; result is vector of [icrypt iplain] pairs, sorted by icrypt
        bit-shuffle-idxs (let [K                 (Math/round (Math/sqrt num-bits))
@@ -188,7 +190,7 @@
         (spyx bit-shuffle-idxs))
 
       (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max N-third
-        offset slope bit-shuffle-idxs))))
+        offset slope  slope-inv bit-shuffle-idxs))))
 
 (s/defn new-ctx :- tsk/KeyMap
   "Creates a new CUID context map. Usage:
@@ -231,5 +233,14 @@
     (biginteger
       (nth
         (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
-        num-rounds)))) ;
+        num-rounds))))
+
+(s/defn cuid->int :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (with-map-vals ctx [num-rounds]
+    (biginteger
+      (nth
+        (iterate #(decrypt-frame ctx %) ival)
+        num-rounds))))
 

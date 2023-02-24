@@ -114,34 +114,44 @@
 
 ;-----------------------------------------------------------------------------
 (verify
-  (let [ctx (new-ctx {:num-bits 32
-                      :verbose? visual-debugging?})]
-    (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
-      ; arg must be in slice 0..(dec N-max)
-      (throws-not? (encrypt-frame ctx 0))
-      (throws-not? (encrypt-frame ctx (dec N-max)))
-      (throws? (encrypt-frame ctx -1))
-      (throws? (encrypt-frame ctx N-max))
 
-      (when visual-debugging?
-        (let [cridx-vals (forv [i (take 32 (range N-max))]
-                           (int->cuid ctx i))]
+  ; enable to see printout
+  (when false
+    (let [ctx (new-ctx {:num-bits   32
+                        :num-rounds 5})]
+      (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
+        ; arg must be in slice 0..(dec N-max)
+        (throws-not? (encrypt-frame ctx 0))
+        (throws-not? (encrypt-frame ctx (dec N-max)))
+        (throws? (encrypt-frame ctx -1))
+        (throws? (encrypt-frame ctx N-max))
+
+        (let [idx-vals    (take 32 (range N-max))
+              cuid-vals   (mapv #(int->cuid ctx %) idx-vals)
+              idx-decrypt (mapv #(cuid->int ctx %) cuid-vals)]
           (nl)
-          (println "    idx   CUID         hex          binary  ")
-          (doseq [[i val] (indexed cridx-vals)]
-            (when (neg? val)
-              (throw (ex-info "found-negative" (vals->map val))))
-            (let [fmt-str (str "%7d  %0" num-digits-dec "d   %s   %s")]
-              (println (format fmt-str i val (math/BigInteger->hex-str val num-digits-hex)
-                         (int->bitstr val num-bits)))))))))
+          (println "    idx   CUID         hex          binary                              orig  ")
+          (doseq [[i cuid] (indexed cuid-vals)]
+            (when (neg? cuid)
+              (throw (ex-info "found-negative" (vals->map cuid))))
+            (let [fmt-str (str "%7d  %0" num-digits-dec "d   %s   %s  %7d")
+                  hex-str (math/BigInteger->hex-str cuid num-digits-hex)
+                  bit-str (int->bitstr cuid num-bits)]
+              (println (format fmt-str i cuid hex-str bit-str (nth idx-decrypt i)))))
+          (isnt= idx-vals cuid-vals)
+          (is= idx-vals idx-decrypt)))))
 
   ; Fast coverage tests
   (doseq [nbits (thru 4 12)]
     (let [ctx (new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
-        (let [nums-orig     (range N-max)
-              nums-shuffled (cp/pmap :builtin #(int->cuid ctx %) nums-orig)]
-          (is-set= nums-orig nums-shuffled)))))
+        (let [idx-vals    (range N-max)
+              cuid-vals   (cp/pmap :builtin #(int->cuid ctx %) idx-vals)
+              idx-decrypt (cp/pmap :builtin #(cuid->int ctx %) cuid-vals)]
+          (is-set= idx-vals cuid-vals) ; all vals present
+          (isnt= idx-vals cuid-vals) ; but not same order (almost surely)
+          (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
+          ))))
 
   ; Slow coverage test (~35 sec)
   (when false
@@ -163,7 +173,7 @@
                 ]
           (let-spy-pretty
             [; ival 7
-             ctx (new-ctx {:num-bits 4})
+             ctx    (new-ctx {:num-bits 4})
 
              cuid   (spyx-pretty (encrypt-frame ctx ival))
              result (spyx-pretty (decrypt-frame ctx cuid))
