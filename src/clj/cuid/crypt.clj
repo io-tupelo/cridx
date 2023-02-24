@@ -34,41 +34,100 @@
    bits-width :- s/Int]
   (str/join (int->bitchars ival bits-width)))
 
-;-----------------------------------------------------------------------------
-(defn modInverse
-  "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
-  Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
-  [x N]
-  (assert (and (pos? x) (pos? N) (< x N)))
-  (let [N-orig N
-        a      1
-        b      0]
-    (if (= 1 N)
-      (throw (ex-info "Invalid N" (vals->map x N)))
-      (loop [x x
-             n N
-             a a
-             b b]
-        (if (< 1 x)
-          (let [x-next n
-                N-next (mod x n)
-                q      (quot x n)
-                a-next b
-                b-next (- a (* q b))]
-            (recur x-next N-next a-next b-next))
-          (if (neg? a)
-            (+ a N-orig)
-            a))))))
-
 (s/defn crypt
   [N m x]
   (modmath/mult-mod-Long m x N))
 
 (s/defn decrypt
   [N m c]
-  (let [minv (modInverse m N)
+  (let [minv (modmath/modInverse m N)
         result (modmath/mult-mod-Long c minv N)]
     result))
+
+;-----------------------------------------------------------------------------
+(s/defn ^:no-doc vec-shuffle :- tsk/Vec ; #todo: maybe make more general version?
+  [ibit-tx-orig :- Matrix
+   vec-orig :- tsk/Vec]
+  (assert (= (count ibit-tx-orig) (count vec-orig)))
+  ; Since `ibit-tx-orig` is sorted by icrypt, we can just go in sequence
+  (let [vec-shuffled (forv [[icrypt iplain] ibit-tx-orig]
+                       (get vec-orig iplain ::error))]
+    vec-shuffled))
+
+(s/defn ^:no-doc vec-unshuffle :- tsk/Vec
+  [ibit-tx-orig :- Matrix
+   vec-shuffled :- tsk/Vec]
+  (assert (= (count ibit-tx-orig) (count vec-shuffled)))
+
+  ; Use of transient/assoc!/persistent! may only be a 2-5x speedup, may not be worth keeping
+  ; See:  https://tech.redplanetlabs.com/2020/09/02/clojure-faster/#clojure-transients
+  ;       https://clojure.org/reference/transients
+  (let [init-result (transient
+                      (vec (repeat (count ibit-tx-orig) ::error1)))
+        vec-orig    (vec
+                      (persistent!
+                        (reduce
+                          (fn [cum [icrypt iplain]]
+                            (let [tx-val (get vec-shuffled icrypt ::error2)]
+                              (assoc! cum iplain tx-val)))
+                          init-result
+                          ibit-tx-orig)))]
+    vec-orig))
+
+;-----------------------------------------------------------------------------
+(s/defn ^:no-doc shuffle-int-bits :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (with-map-vals ctx [num-bits ibit-tx-orig]
+    (it-> ival
+      (int->bitchars it num-bits)
+      (vec-shuffle ibit-tx-orig it)
+      (math/binary-chars->BigInteger it))))
+
+(s/defn ^:no-doc unshuffle-int-bits :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (with-map-vals ctx [num-bits ibit-tx-orig]
+    (it-> ival
+      (int->bitchars it num-bits)
+      (vec-unshuffle ibit-tx-orig it)
+      (math/binary-chars->BigInteger it))))
+
+;-----------------------------------------------------------------------------
+(s/defn ^:no-doc encrypt-frame :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (prn :-------------------------------------------------------)
+  (with-map-vals ctx [N-max slope offset]
+    #_(when-not (and (<= 0 ival) (< ival N-max))
+        (throw (ex-info "ival out of range" (vals->map ival N-max))))
+    ; calculate mod( y = mx + b ), then shuffle bits
+    (let-spy-pretty
+      [ival   (biginteger ival)
+       mx     (.multiply ^BigInteger ival slope)
+       y      (.add ^BigInteger offset mx)
+       ymod   (.mod ^BigInteger y N-max)
+       result (shuffle-int-bits ctx ymod)
+       ]
+      (biginteger result))))
+
+(s/defn ^:no-doc decrypt-frame :- BigInteger
+  [ctx :- tsk/KeyMap
+   cuid :- s/Int]
+  (prn :-------------------------------------------------------)
+  (with-map-vals ctx [N-max slope offset Q short]
+    #_(when-not (and (<= 0 cuid) (< cuid N-max))
+        (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
+    (let-spy-pretty
+      [slope-sym (modmath/mod-symmetric slope N-max)
+
+       ymod      (unshuffle-int-bits ctx cuid)
+       yprime    (modmath/mod-symmetric (- ymod offset) N-max)
+
+       ]
+      ;  (biginteger x)
+      nil
+      )))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -170,88 +229,3 @@
                                               arg))
         ctx            (new-ctx-impl params)]
     ctx))
-
-;-----------------------------------------------------------------------------
-(s/defn ^:no-doc vec-shuffle :- tsk/Vec ; #todo: maybe make more general version?
-  [ibit-tx-orig :- Matrix
-   vec-orig :- tsk/Vec]
-  (assert (= (count ibit-tx-orig) (count vec-orig)))
-  ; Since `ibit-tx-orig` is sorted by icrypt, we can just go in sequence
-  (let [vec-shuffled (forv [[icrypt iplain] ibit-tx-orig]
-                       (get vec-orig iplain ::error))]
-    vec-shuffled))
-
-(s/defn ^:no-doc vec-unshuffle :- tsk/Vec
-  [ibit-tx-orig :- Matrix
-   vec-shuffled :- tsk/Vec]
-  (assert (= (count ibit-tx-orig) (count vec-shuffled)))
-
-  ; Use of transient/assoc!/persistent! may only be a 2-5x speedup, may not be worth keeping
-  ; See:  https://tech.redplanetlabs.com/2020/09/02/clojure-faster/#clojure-transients
-  ;       https://clojure.org/reference/transients
-  (let [init-result (transient
-                      (vec (repeat (count ibit-tx-orig) ::error1)))
-        vec-orig    (vec
-                      (persistent!
-                        (reduce
-                          (fn [cum [icrypt iplain]]
-                            (let [tx-val (get vec-shuffled icrypt ::error2)]
-                              (assoc! cum iplain tx-val)))
-                          init-result
-                          ibit-tx-orig)))]
-    vec-orig))
-
-(s/defn ^:no-doc shuffle-int-bits :- BigInteger
-  [ctx :- tsk/KeyMap
-   ival :- s/Int]
-  (with-map-vals ctx [num-bits ibit-tx-orig]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-shuffle ibit-tx-orig it)
-      (math/binary-chars->BigInteger it))))
-
-(s/defn ^:no-doc unshuffle-int-bits :- BigInteger
-  [ctx :- tsk/KeyMap
-   ival :- s/Int]
-  (with-map-vals ctx [num-bits ibit-tx-orig]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-unshuffle ibit-tx-orig it)
-      (math/binary-chars->BigInteger it))))
-
-(s/defn ^:no-doc encrypt-frame :- BigInteger
-  [ctx :- tsk/KeyMap
-   ival :- s/Int]
-  (prn :-----------------------------------------------------------------------------)
-  (with-map-vals ctx [N-max slope offset]
-    #_(when-not (and (<= 0 ival) (< ival N-max))
-        (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    ; calculate mod( y = mx + b ), then shuffle bits
-    (let-spy-pretty
-      [ival   (biginteger ival)
-       mx     (.multiply ^BigInteger ival slope)
-       y      (.add ^BigInteger offset mx)
-       ymod   (.mod ^BigInteger y N-max)
-       result (shuffle-int-bits ctx ymod)
-       ]
-      (biginteger result))))
-
-(s/defn ^:no-doc decrypt-frame :- BigInteger
-  [ctx :- tsk/KeyMap
-   cuid :- s/Int]
-  (prn :-----------------------------------------------------------------------------)
-  (with-map-vals ctx [N-max slope offset Q short]
-    #_(when-not (and (<= 0 cuid) (< cuid N-max))
-        (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
-    (let-spy-pretty
-      [slope-sym (modmath/mod-symmetric slope N-max)
-
-       ymod      (unshuffle-int-bits ctx cuid)
-       yprime    (modmath/mod-symmetric (- ymod offset) N-max)
-
-       ]
-      ;  (biginteger x)
-      nil
-      )))
-
-

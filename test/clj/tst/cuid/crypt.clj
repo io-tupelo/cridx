@@ -14,6 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (def visual-debugging? false) ; <= enable to see extra printouts
+(def verbose? false)
 
 (verify
   (let [bi-five (biginteger 5)]
@@ -37,8 +38,7 @@
     (is= "00000101" (int->bitstr 5 8))))
 
 (verify
-  (let [N        32
-        verbose? false]
+  (let [N        32]
     (doseq [m (range 1 16 2)]
       (when verbose?
         (nl)
