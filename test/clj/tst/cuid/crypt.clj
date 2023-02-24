@@ -177,8 +177,9 @@
     (is= 256 (iterate-n 8 times-2 1))))
 
 (verify
+  ; need to uncomment & reformat profile statements in source code to use this
+
   (when false ; round-trip timing printouts disabled by default
-    (nl)
 
     (tsk/with-validation-disabled
 
@@ -214,20 +215,21 @@
             (idx->cuid ctx i))))
       (prof/print-profile-stats)
 
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 512})]
-        (prn :timing-1000-512)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (cuid->idx ctx
-            (idx->cuid ctx i))))
-      (prof/print-profile-stats)
+      (when false
+        (prof/timer-stats-reset)
+        (let [ctx (new-ctx {:num-bits 512})]
+          (prn :timing-1000-512)
+          (dotimes [i 1000] ; timing for 1000 CRIDX values
+            (cuid->idx ctx
+              (idx->cuid ctx i))))
+        (prof/print-profile-stats)
 
-      (prof/timer-stats-reset)
-      (let [ctx (new-ctx {:num-bits 1024})]
-        (prn :timing-1000-1024)
-        (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (cuid->idx ctx
-            (idx->cuid ctx i))))
-      (prof/print-profile-stats)
+        (prof/timer-stats-reset)
+        (let [ctx (new-ctx {:num-bits 1024})]
+          (prn :timing-1000-1024)
+          (dotimes [i 1000] ; timing for 1000 CRIDX values
+            (cuid->idx ctx
+              (idx->cuid ctx i))))
+        (prof/print-profile-stats)
 
-      )))
+        ))))
