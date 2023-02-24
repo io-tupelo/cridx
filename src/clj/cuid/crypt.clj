@@ -97,9 +97,8 @@
 (s/defn ^:no-doc encrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (prn :-------------------------------------------------------)
   (with-map-vals ctx [N-max slope offset]
-    #_(when-not (and (<= 0 ival) (< ival N-max))
+    (when-not (and (<= 0 ival) (< ival N-max))
         (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
     (let  ; -spy-pretty
@@ -114,12 +113,11 @@
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
-  (prn :-------------------------------------------------------)
+  ; (prn :-------------------------------------------------------)
   (with-map-vals ctx [N-max slope offset]
-    #_(when-not (and (<= 0 cuid) (< cuid N-max))
+    (when-not (and (<= 0 cuid) (< cuid N-max))
         (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
-    (let-spy-pretty
-      [
+    (let [
 
        ymod (unshuffle-bits-BigInteger ctx cuid)
        ]
@@ -132,7 +130,7 @@
     (assert (pos-int? num-bits))
     (assert (pos-int? num-rounds))
     (assert (pos-int? rand-seed))
-    (let-spy
+    (let  ; -spy
       [random-gen       (Random. rand-seed)
 
        ; used for text formatting only
@@ -218,3 +216,20 @@
                                               arg))
         ctx            (new-ctx-impl params)]
     ctx))
+
+; Timing (2 rounds):
+;   32 bits:  15 usec/call
+;   64 bits:  25 usec/call
+;  128 bits:  42 usec/call
+;  256 bits:  80 usec/call
+;  512 bits: 150 usec/call
+; 1024 bits: 300 usec/call
+(s/defn int->cuid :- BigInteger
+  [ctx :- tsk/KeyMap
+   ival :- s/Int]
+  (with-map-vals ctx [num-rounds]
+    (biginteger
+      (nth
+        (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
+        num-rounds)))) ;
+

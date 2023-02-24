@@ -14,6 +14,7 @@
 ;
 ;-----------------------------------------------------------------------------
 ; #todo need BigInt version?
+
 (defn ceil-long [x] (long (Math/ceil (double x))))
 (defn floor-long [x] (long (Math/floor (double x))))
 (defn round-long [x] (long (Math/round (double x))))
