@@ -4,6 +4,7 @@
     [schema.core :as s]
     [cuid.modular-arithmetic :as mod]
     [tupelo.math :as math]
+    [tupelo.profile :as prof]
     [tupelo.schema :as tsk]
     [tupelo.string :as str])
   (:import
@@ -45,7 +46,8 @@
     result))
 
 ;-----------------------------------------------------------------------------
-(s/defn ^:no-doc vec-shuffle :- tsk/Vec ; #todo: maybe make more general version?
+; #todo: maybe make more general version?
+(s/defn ^:no-doc vec-shuffle :- tsk/Vec
   [bit-shuffle-idxs :- Matrix
    vec-orig :- tsk/Vec]
   (assert (= (count bit-shuffle-idxs) (count vec-orig)))
@@ -54,73 +56,81 @@
                        (get vec-orig iplain ::error))]
     vec-shuffled))
 
+
 (s/defn ^:no-doc vec-unshuffle :- tsk/Vec
   [bit-shuffle-idxs :- Matrix
    vec-shuffled :- tsk/Vec]
   (assert (= (count bit-shuffle-idxs) (count vec-shuffled)))
-
-  ; Use of transient/assoc!/persistent! may only be a 2-5x speedup, may not be worth keeping
-  ; See:  https://tech.redplanetlabs.com/2020/09/02/clojure-faster/#clojure-transients
-  ;       https://clojure.org/reference/transients
-  (let [init-result (transient
-                      (vec (repeat (count bit-shuffle-idxs) ::error1)))
+  ; Tried using transient/assoc!/persistent! but was ~10% slower
+  (let [init-result (vec (repeat (count bit-shuffle-idxs) ::error1))
         vec-orig    (vec
-                      (persistent!
-                        (reduce
-                          (fn [cum [icrypt iplain]]
-                            (let [tx-val (get vec-shuffled icrypt ::error2)]
-                              (assoc! cum iplain tx-val)))
-                          init-result
-                          bit-shuffle-idxs)))]
+                      (reduce
+                        (fn [cum [icrypt iplain]]
+                          (let [tx-val (get vec-shuffled icrypt ::error2)]
+                            (assoc cum iplain tx-val)))
+                        init-result
+                        bit-shuffle-idxs))]
     vec-orig))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-shuffle bit-shuffle-idxs it)
-      (math/binary-chars->BigInteger it))))
+  (prof/with-timer-accum :shuffle-bits-BigInteger
+    (with-map-vals ctx [num-bits bit-shuffle-idxs]
+      (it-> ival
+        (prof/with-timer-accum :shuffle-bits-BigInteger-a
+          (int->bitchars it num-bits))
+        (prof/with-timer-accum :shuffle-bits-BigInteger-b
+          (vec-shuffle bit-shuffle-idxs it))
+        (prof/with-timer-accum :shuffle-bits-BigInteger-c
+          (math/binary-chars->BigInteger it))))))
 
 (s/defn ^:no-doc unshuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-unshuffle bit-shuffle-idxs it)
-      (math/binary-chars->BigInteger it))))
+  (prof/with-timer-accum :unshuffle-bits-BigInteger
+    (with-map-vals ctx [num-bits bit-shuffle-idxs]
+      (it-> ival
+        (prof/with-timer-accum :unshuffle-bits-BigInteger-a
+          (int->bitchars it num-bits))
+        (prof/with-timer-accum :unshuffle-bits-BigInteger-b
+          (vec-unshuffle bit-shuffle-idxs it))
+        (prof/with-timer-accum :unshuffle-bits-BigInteger-c
+          (math/binary-chars->BigInteger it))))))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc encrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [N-max slope offset]
-    (when-not (and (<= 0 ival) (< ival N-max))
-      (throw (ex-info "ival out of range" (vals->map ival N-max))))
-    ; calculate mod( y = mx + b ), then shuffle bits
-    (let  ; -spy-pretty
-      [result (it-> (biginteger ival)
-                (.multiply ^BigInteger it slope)
-                (.add ^BigInteger it offset)
-                (mod/mod-BigInteger it N-max)
-                (shuffle-bits-BigInteger ctx it))]
-      result)))
+  (prof/with-timer-accum :encrypt-frame
+    (with-map-vals ctx [N-max slope offset]
+      (when-not (and (<= 0 ival) (< ival N-max))
+        (throw (ex-info "ival out of range" (vals->map ival N-max))))
+      ; calculate mod( y = mx + b ), then shuffle bits
+      (let ; -spy-pretty
+        [r1 (it-> (biginteger ival)
+              (.multiply ^BigInteger it slope)
+              (.add ^BigInteger it offset)
+              (mod/mod-BigInteger it N-max))
+         r2 (cond-it-> r1
+              (:shuffle-bits? ctx) (shuffle-bits-BigInteger ctx it))]
+        r1))))
 
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
-  (with-map-vals ctx [N-max slope slope-inv offset]
-    (when-not (and (<= 0 cuid) (< cuid N-max))
-      (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
-    (let [result (it-> (biginteger cuid)
-                   (unshuffle-bits-BigInteger ctx it)
-                   (.subtract ^BigInteger it ^BigInteger offset)
-                   (.multiply ^BigInteger it ^BigInteger slope-inv)
-                   (mod/mod-BigInteger it N-max))]
-      result)))
+  (prof/with-timer-accum :decrypt-frame
+    (with-map-vals ctx [N-max slope slope-inv offset]
+      (when-not (and (<= 0 cuid) (< cuid N-max))
+        (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
+      (let [r1 (cond-it-> (biginteger cuid)
+                 (:shuffle-bits? ctx) (unshuffle-bits-BigInteger ctx it))
+            r2 (it-> r1
+                 (.subtract ^BigInteger it ^BigInteger offset)
+                 (.multiply ^BigInteger it ^BigInteger slope-inv)
+                 (mod/mod-BigInteger it N-max))]
+        r2))))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -189,8 +199,10 @@
         (spyx [slope (math/BigInteger->binary-str slope)])
         (spyx bit-shuffle-idxs))
 
-      (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max N-third
-        offset slope  slope-inv bit-shuffle-idxs))))
+      (let [ctx-out (glue params
+                      (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max N-third
+                        offset slope slope-inv bit-shuffle-idxs))]
+        ctx-out))))
 
 (s/defn new-ctx :- tsk/KeyMap
   "Creates a new CUID context map. Usage:
@@ -204,43 +216,46 @@
          :num-rounds   <long>  ; optional:  positive int (default: 2)
          :verbose?     false   ; optional:  enable for dbg prints (default: false)
         } "
-  [arg :- tsk/KeyMap]
-  (s/validate {:num-bits                    s/Int
-               (s/optional-key :rand-seed)  s/Int
-               (s/optional-key :num-rounds) s/Int
-               (s/optional-key :verbose?)   s/Bool}
-    arg)
-  (let [params-default {:rand-seed  (Math/abs (.nextLong (Random.))) ; positive for simplicity
-                        :num-rounds 2
-                        :verbose?   false}
-        params         (glue params-default (if (int? arg)
-                                              {:num-bits arg}
-                                              arg))
+  [opts :- tsk/KeyMap]
+  (s/validate {:num-bits                       s/Int
+               (s/optional-key :rand-seed)     s/Int
+               (s/optional-key :num-rounds)    s/Int
+               (s/optional-key :verbose?)      s/Bool
+               (s/optional-key :shuffle-bits?) s/Bool}
+    opts)
+  (let [params-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
+                        :num-rounds    5
+                        :verbose?      false
+                        :shuffle-bits? false} ; timing is about 100x slower when enabled
+        params         (glue params-default opts)
         ctx            (new-ctx-impl params)]
     ctx))
 
-; Timing (2 rounds):
-;   32 bits:  15 usec/call
-;   64 bits:  25 usec/call
-;  128 bits:  42 usec/call
-;  256 bits:  80 usec/call
-;  512 bits: 150 usec/call
-; 1024 bits: 300 usec/call
-(s/defn int->cuid :- BigInteger
+;-----------------------------------------------------------------------------
+; Timing {:num-rounds 5  :shuffle-bits? false}
+;   32 bits:  10 usec/call
+;   64 bits:  10 usec/call
+;  128 bits:  10 usec/call
+;  256 bits:  11 usec/call
+;
+; Timing {:num-rounds 2  :shuffle-bits? true}
+;   32 bits:  25 usec/call
+;   64 bits:  45 usec/call
+;  128 bits:  80 usec/call
+;  256 bits: 157 usec/call
+(s/defn idx->cuid :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-rounds]
-    (biginteger
-      (nth
-        (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
-        num-rounds))))
+  (prof/with-timer-accum :idx->cuid
+    (nth
+      (iterate #(encrypt-frame ctx %) ival) ; NOTE: seq is [x  (f x)  (f (f x))...] so don't use (dec N)
+      (grab :num-rounds ctx))))
 
-(s/defn cuid->int :- BigInteger
+(s/defn cuid->idx :- BigInteger
   [ctx :- tsk/KeyMap
-   ival :- s/Int]
-  (with-map-vals ctx [num-rounds]
-    (biginteger
-      (nth
-        (iterate #(decrypt-frame ctx %) ival)
-        num-rounds))))
+   cuid :- s/Int]
+  (prof/with-timer-accum :cuid->idx
+    (nth
+      (iterate #(decrypt-frame ctx %) cuid)
+      (grab :num-rounds ctx))))
 

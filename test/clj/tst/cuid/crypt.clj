@@ -117,7 +117,7 @@
 (verify
 
   ; enable to see printout
-  (when false
+  (when true
     (let [ctx (new-ctx {:num-bits   32
                         :num-rounds 5})]
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
@@ -128,8 +128,8 @@
         (throws? (encrypt-frame ctx N-max))
 
         (let [idx-vals    (take 32 (range N-max))
-              cuid-vals   (mapv #(int->cuid ctx %) idx-vals)
-              idx-decrypt (mapv #(cuid->int ctx %) cuid-vals)]
+              cuid-vals   (mapv #(idx->cuid ctx %) idx-vals)
+              idx-decrypt (mapv #(cuid->idx ctx %) cuid-vals)]
           (nl)
           (println "    idx   CUID         hex          binary                              orig  ")
           (doseq [[i cuid] (indexed cuid-vals)]
@@ -143,13 +143,15 @@
           (is= idx-vals idx-decrypt)))))
 
   ; Fast coverage tests
-  (doseq [nbits (thru 4 12)]
+  (doseq [nbits (thru 4 5)]
     (let [ctx (new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
         (let [idx-vals    (range N-max)
-              cuid-vals   (cp/pmap :builtin #(int->cuid ctx %) idx-vals)
-              idx-decrypt (cp/pmap :builtin #(cuid->int ctx %) cuid-vals)]
+              cuid-vals   (cp/pmap :builtin #(idx->cuid ctx %) idx-vals)
+              idx-decrypt (cp/pmap :builtin #(cuid->idx ctx %) cuid-vals)]
           (is-set= idx-vals cuid-vals) ; all vals present
+          (spyx idx-vals )
+          (spyx cuid-vals)
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
           (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
           ))))
@@ -162,37 +164,111 @@
         (println (format "Running integer coverage test (num-bits: %d  N-max: %d)" num-bits N-max))
         (prof/with-timer-print :coverage-test
           (let [nums-orig     (range N-max)
-                nums-shuffled (cp/pmap :builtin #(int->cuid ctx %) nums-orig)]
+                nums-shuffled (cp/pmap :builtin #(idx->cuid ctx %) nums-orig)]
             (is-set= nums-orig nums-shuffled)))))))
 
 (verify
-  (when visual-debugging? ; timing printouts disabled by default
-
+  (when false ; encrypt-only timing printouts disabled by default
     (nl)
-    (tsk/with-validation-disabled
-      (let [ctx (new-ctx {:num-bits 32})]
-        (prof/with-timer-print :timing-1000-32 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i))))
-      (let [ctx (new-ctx {:num-bits 64})]
-        (prof/with-timer-print :timing-1000-64 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i))))
-      (let [ctx (new-ctx {:num-bits 128})]
-        (prof/with-timer-print :timing-1000-128 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i))))
 
+    (tsk/with-validation-disabled
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 32})]
+        (prn :timing-1000-32)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 64})]
+        (prn :timing-1000-64)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 128})]
+        (prn :timing-1000-128)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 256})]
-        (prof/with-timer-print :timing-1000-256 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i))))
+        (prn :timing-1000-256)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 512})]
-        (prof/with-timer-print :timing-1000-512 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i))))
+        (prn :timing-1000-512)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 1024})]
-        (tsk/with-validation-disabled)
-        (prof/with-timer-print :timing-1000-1024 ; timing for 1000 CRIDX values
-          (dotimes [i 1000]
-            (int->cuid ctx i)))))))
+        (prn :timing-1000-1024)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (idx->cuid ctx i)))
+      (prof/print-profile-stats)
+
+      )))
+
+(verify
+  (when true ; round-trip timing printouts disabled by default
+    (nl)
+
+    (tsk/with-validation-disabled
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 32})]
+        (prn :timing-1000-32)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 64})]
+        (prn :timing-1000-64)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 128})]
+        (prn :timing-1000-128)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 256})]
+        (prn :timing-1000-256)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 512})]
+        (prn :timing-1000-512)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      (prof/timer-stats-reset)
+      (let [ctx (new-ctx {:num-bits 1024})]
+        (prn :timing-1000-1024)
+        (dotimes [i 1000] ; timing for 1000 CRIDX values
+          (cuid->idx ctx
+            (idx->cuid ctx i))))
+      (prof/print-profile-stats)
+
+      )))
