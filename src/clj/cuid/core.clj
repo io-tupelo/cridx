@@ -50,7 +50,7 @@
   (let [params-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
                         :num-rounds    5
                         :shuffle-bits? false}
-        ctx            (crypt/new-ctx-impl (glue params-default opts))]
+        ctx            (crypt/new-ctx (glue params-default opts))]
     ctx))
 
 ;-----------------------------------------------------------------------------

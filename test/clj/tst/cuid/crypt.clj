@@ -101,10 +101,9 @@
 (verify
 
   ; vvv enable to see printout
-  (when true
+  (when false
     (let [ctx (crypt/new-ctx {:num-bits   32
                               :num-rounds 5})]
-      (spyx-pretty ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
         ; arg must be in slice 0..(dec N-max)
         (throws-not? (crypt/encrypt-frame ctx 0))

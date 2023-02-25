@@ -224,7 +224,7 @@
         ctx-out))))
 
 (s/defn new-ctx :- tsk/KeyMap
-  "Creates a new CUID context map. Usage:
+  "Creates a new encryption context map. Usage:
 
         (new-ctx <params-map>)
 
