@@ -74,47 +74,30 @@
 ;-----------------------------------------------------------------------------
 ; #todo: maybe make more general version?
 (s/defn ^:no-doc vec-shuffle :- tsk/Vec
-  [bit-shuffle-idxs :- Matrix
+  [bit-idxs :- [s/Int]
    vec-orig :- tsk/Vec]
-  (assert (= (count bit-shuffle-idxs) (count vec-orig)))
-  ; Since `bit-shuffle-idxs` is sorted by icrypt, we can just go in sequence
-  (let [vec-shuffled (forv [[icrypt iplain] bit-shuffle-idxs]
-                       (get vec-orig iplain ::error))]
+  (assert (= (count bit-idxs) (count vec-orig)))
+  (let [vec-shuffled (forv [idx bit-idxs]
+                       (get vec-orig idx ::error))]
     vec-shuffled))
-
-
-(s/defn ^:no-doc vec-unshuffle :- tsk/Vec
-  [bit-shuffle-idxs :- Matrix
-   vec-shuffled :- tsk/Vec]
-  (assert (= (count bit-shuffle-idxs) (count vec-shuffled)))
-  ; Tried using transient/assoc!/persistent! but was ~10% slower
-  (let [init-result (vec (repeat (count bit-shuffle-idxs) ::error1))
-        vec-orig    (vec
-                      (reduce
-                        (fn [cum [icrypt iplain]]
-                          (let [tx-val (get vec-shuffled icrypt ::error2)]
-                            (assoc cum iplain tx-val)))
-                        init-result
-                        bit-shuffle-idxs))]
-    vec-orig))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs]
+  (with-map-vals ctx [num-bits bit-shuffle-idxs-plain]
     (it-> ival
       (int->bitchars it num-bits)
-      (vec-shuffle bit-shuffle-idxs it)
+      (vec-shuffle bit-shuffle-idxs-plain it)
       (math/binary-chars->BigInteger it))))
 
 (s/defn ^:no-doc unshuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs]
+  (with-map-vals ctx [num-bits bit-shuffle-idxs-crypt]
     (it-> ival
       (int->bitchars it num-bits)
-      (vec-unshuffle bit-shuffle-idxs it)
+      (vec-shuffle bit-shuffle-idxs-crypt it)
       (math/binary-chars->BigInteger it))))
 
 ;-----------------------------------------------------------------------------
@@ -178,38 +161,42 @@
     (assert (pos-int? num-bits))
     (assert (pos-int? num-rounds))
     (assert (pos-int? rand-seed))
-    (let [random-gen       (Random. rand-seed)
+    (let [random-gen             (Random. rand-seed)
 
           ; used for text formatting only
-          num-digits-hex   (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
-          num-digits-dec   (long (Math/ceil (/ num-bits (math/log2 10))))
+          num-digits-hex         (long (Math/ceil (/ num-bits 4))) ; (log2 16) => 4
+          num-digits-dec         (long (Math/ceil (/ num-bits (math/log2 10))))
 
           ; We want slope & offset to be in the central half of all possible values to
           ; "encourage" lots of bits to flip on each multiply/add operation.
-          N-max            (math/pow-BigInteger 2 num-bits)
+          N-max                  (math/pow-BigInteger 2 num-bits)
 
-          offsets          (forv [i (range num-rounds)]
-                             (BigInteger. num-bits random-gen))
-          slopes           (forv [i (range num-rounds)]
-                             (gen-slope num-bits random-gen))
-          slopes-inv       (forv [slope slopes]
-                             (biginteger (mod/modInverse slope N-max)))
+          offsets                (forv [i (range num-rounds)]
+                                   (BigInteger. num-bits random-gen))
+          slopes                 (forv [i (range num-rounds)]
+                                   (gen-slope num-bits random-gen))
+          slopes-inv             (forv [slope slopes]
+                                   (biginteger (mod/modInverse slope N-max)))
 
-          round-idxs       (vec (range  num-rounds)) ; precompute since used on every call
-          round-idxs-rev   (vec (reverse round-idxs))
+          round-idxs             (vec (range num-rounds)) ; precompute since used on every call
+          round-idxs-rev         (vec (reverse round-idxs))
 
+          ;-----------------------------------------------------------------------------
           ; #todo extract to a function & write unit tests
-          ; result is vector of [icrypt iplain] pairs, sorted by icrypt
-          bit-shuffle-idxs (let [K                 (Math/round (Math/sqrt num-bits))
-                                 bit-idxs-2d       (partition-all K (range num-bits))
-                                 bit-idxs-2d-rev   (forv [[irow ibit-seq] (indexed bit-idxs-2d)]
-                                                     (if (odd? irow)
-                                                       (reverse ibit-seq)
-                                                       ibit-seq))
-                                 bit-idxs-shuffled (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-                                 >>                (assert (= (set (range num-bits)) (set bit-idxs-shuffled)))
-                                 bit-idxs-pairs    (indexed bit-idxs-shuffled)]
-                             bit-idxs-pairs)]
+          K                      (Math/round (Math/sqrt num-bits))
+          bit-idxs-2d            (partition-all K (range num-bits))
+          bit-idxs-2d-rev        (forv [[irow ibit-seq] (indexed bit-idxs-2d)]
+                                   (if (odd? irow)
+                                     (reverse ibit-seq)
+                                     ibit-seq))
+          bit-shuffle-idxs-plain (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
+          bit-shuffle-idxs-crypt (it-> (indexed bit-shuffle-idxs-plain)
+                                   (sort-by second it)
+                                   (mapv first it))
+          ;-----------------------------------------------------------------------------
+          ]
+      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-plain)))
+      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-crypt)))
 
       ;-----------------------------------------------------------------------------
       ; sanity checks
@@ -227,12 +214,15 @@
         (spyx offsets)
         (spyx slopes)
         (spyx slopes-inv)
-        (spyx bit-shuffle-idxs))
+        (spyx bit-shuffle-idxs-plain)
+        (spyx bit-shuffle-idxs-crypt)
+        )
 
       (let [ctx-out (glue params
                       (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max
                         offsets slopes slopes-inv round-idxs round-idxs-rev
-                        bit-shuffle-idxs))]
+                        bit-shuffle-idxs-plain bit-shuffle-idxs-crypt
+                        ))]
         ctx-out))))
 
 (s/defn new-ctx :- tsk/KeyMap

@@ -37,53 +37,16 @@
 ;-----------------------------------------------------------------------------
 (verify
   (is= [:b :c :d :a] (crypt/vec-shuffle
-                       [[0 1]
-                        [1 2]
-                        [2 3]
-                        [3 0]]
+                       [ 1 2 3 0]
                        [:a :b :c :d]))
   (is= [:d :c :b :a] (crypt/vec-shuffle
-                       [[0 3]
-                        [1 2]
-                        [2 1]
-                        [3 0]]
+                       [ 3 2 1 0]
                        [:a :b :c :d]))
   (is= [:c :b :d :a] (crypt/vec-shuffle
-                       [[0 2]
-                        [1 1]
-                        [2 3]
-                        [3 0]]
+                       [ 2 1 3 0]
                        [:a :b :c :d]))
   (throws? (crypt/vec-shuffle
-             [[0 2]
-              [1 1]
-              [3 0]]
-             [:a :b :c :d]))
-
-
-  (let [ibit-tx-orig [[0 1]
-                      [1 2]
-                      [2 3]
-                      [3 0]]
-        data         [:a :b :c :d]]
-    (is= data
-      (it-> data
-        (crypt/vec-shuffle ibit-tx-orig it)
-        (crypt/vec-unshuffle ibit-tx-orig it))))
-
-  (let [ibit-tx-orig [[0 3]
-                      [1 2]
-                      [2 1]
-                      [3 0]]
-        data         [:a :b :c :d]]
-    (is= data
-      (it-> data
-        (crypt/vec-shuffle ibit-tx-orig it)
-        (crypt/vec-unshuffle ibit-tx-orig it))))
-
-  (throws? (crypt/vec-unshuffle [[0 2]
-                                 [1 1]
-                                 [3 0]]
+             [2 1 0]
              [:a :b :c :d])))
 
 ;-----------------------------------------------------------------------------
@@ -128,7 +91,7 @@
           (is= idx-vals idx-decrypt)))))
 
   ; Fast coverage tests
-  (doseq [nbits (thru 4 12)]
+  (doseq [nbits (thru 4  12)]
     (let [ctx (crypt/new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
         (let [idx-vals    (range N-max)
