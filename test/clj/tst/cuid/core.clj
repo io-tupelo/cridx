@@ -23,9 +23,8 @@
           (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
           )))))
 
-
 (verify
-  ; vvv enable to see printout
+  ; ***** ENABLE TO SEE PRINTOUT *****
   (when true
     (let [ctx (new-ctx {:num-bits 32})]
       ; (spyx ctx)
@@ -46,6 +45,4 @@
               (println (format fmt-str i cuid hex-str bit-str (nth idx-decrypt i)))))
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
           (is= idx-vals idx-decrypt))))))
-
-
 

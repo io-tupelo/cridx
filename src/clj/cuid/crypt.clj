@@ -77,35 +77,25 @@
   [bit-idxs :- [s/Int]
    vec-orig :- tsk/Vec]
   (assert (= (count bit-idxs) (count vec-orig)))
-  (let [vec-shuffled (forv [idx bit-idxs]
-                       (get vec-orig idx ::error))]
-    vec-shuffled))
+  (forv [idx bit-idxs]
+    (get vec-orig idx ::error-81)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
-  [ctx :- tsk/KeyMap
+  [num-bits :- s/Int
+   bit-shuffle-idxs :- [s/Int]
    ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs-plain]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-shuffle bit-shuffle-idxs-plain it)
-      (math/binary-chars->BigInteger it))))
-
-(s/defn ^:no-doc unshuffle-bits-BigInteger :- BigInteger
-  [ctx :- tsk/KeyMap
-   ival :- s/Int]
-  (with-map-vals ctx [num-bits bit-shuffle-idxs-crypt]
-    (it-> ival
-      (int->bitchars it num-bits)
-      (vec-shuffle bit-shuffle-idxs-crypt it)
-      (math/binary-chars->BigInteger it))))
+  (it-> ival
+    (int->bitchars it num-bits)
+    (vec-shuffle bit-shuffle-idxs it)
+    (math/binary-chars->BigInteger it)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc encrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    iround :- s/Int
    ival :- s/Int]
-  (with-map-vals ctx [N-max slopes offsets shuffle-bits?]
+  (with-map-vals ctx [num-bits N-max slopes offsets shuffle-bits?  bit-shuffle-idxs-plain]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
@@ -117,21 +107,21 @@
                    (.add ^BigInteger it offset)
                    (mod/mod-BigInteger it N-max))
           r2     (cond-it-> r1
-                   shuffle-bits? (shuffle-bits-BigInteger ctx it))]
+                   shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-plain it))]
       r2)))
 
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
    iround :- s/Int
    cuid :- s/Int]
-  (with-map-vals ctx [N-max slopes-inv offsets shuffle-bits?]
+  (with-map-vals ctx [num-bits N-max slopes-inv offsets shuffle-bits? bit-shuffle-idxs-crypt]
     (when-not (and (<= 0 cuid) (< cuid N-max))
       (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
     (let [slope-inv (get slopes-inv iround)
           offset    (get offsets iround)
           cuid      (biginteger cuid)
           r1        (cond-it-> cuid
-                      shuffle-bits? (unshuffle-bits-BigInteger ctx it))
+                      shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-crypt it))
           r2        (it-> r1
                       (.subtract ^BigInteger it ^BigInteger offset)
                       (.multiply ^BigInteger it ^BigInteger slope-inv)

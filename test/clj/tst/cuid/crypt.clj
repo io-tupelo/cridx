@@ -52,18 +52,18 @@
 ;-----------------------------------------------------------------------------
 (verify
   (doseq [num-bits (thru 4 10)]
-    (let [ctx             (crypt/new-ctx {:num-bits num-bits})
-          N-max           (grab :N-max ctx)
-          orig-vals       (range N-max)
-          shuffled-vals   (mapv #(crypt/shuffle-bits-BigInteger ctx %) orig-vals)
-          unshuffled-vals (mapv #(crypt/unshuffle-bits-BigInteger ctx %) shuffled-vals)]
-      (is-set= orig-vals shuffled-vals)
-      (is= orig-vals unshuffled-vals))))
+    (let [ctx (crypt/new-ctx {:num-bits num-bits})]
+      (with-map-vals ctx [num-bits N-max bit-shuffle-idxs-plain bit-shuffle-idxs-crypt]
+        (let [orig-vals       (range N-max)
+              shuffled-vals   (mapv #(crypt/shuffle-bits-BigInteger num-bits bit-shuffle-idxs-plain %) orig-vals)
+              unshuffled-vals (mapv #(crypt/shuffle-bits-BigInteger num-bits bit-shuffle-idxs-crypt %) shuffled-vals)]
+          (is-set= orig-vals shuffled-vals)
+          (is= orig-vals unshuffled-vals))))))
 
 ;-----------------------------------------------------------------------------
 (verify
 
-  ; vvv enable to see printout
+  ; ***** ENABLE TO SEE PRINTOUT *****
   (when false
     (let [ctx (crypt/new-ctx {:num-bits   32
                               :num-rounds 5})]
