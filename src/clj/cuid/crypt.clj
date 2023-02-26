@@ -8,7 +8,8 @@
     [tupelo.schema :as tsk]
     [tupelo.string :as str])
   (:import
-    [java.util Random]))
+    [java.util Random]
+    [java.util.function BiFunction]))
 
 (def Matrix [[s/Any]])
 (def verbose? false)
@@ -110,7 +111,6 @@
 (s/defn ^:no-doc unshuffle-bits-BigInteger :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  ; (prof/with-timer-accum :unshuffle-bits-BigInteger)
   (with-map-vals ctx [num-bits bit-shuffle-idxs]
     (it-> ival
       (int->bitchars it num-bits)
@@ -120,34 +120,56 @@
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc encrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
+   iround :- s/Int
    ival :- s/Int]
-  (with-map-vals ctx [N-max slope offset shuffle-bits?]
+  (with-map-vals ctx [N-max slopes offsets shuffle-bits?]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
-    (let [ival (biginteger ival)
-          r1   (it-> ival
-                 (.multiply ^BigInteger it slope)
-                 (.add ^BigInteger it offset)
-                 (mod/mod-BigInteger it N-max))
-          r2   (cond-it-> r1
-                 shuffle-bits? (shuffle-bits-BigInteger ctx it))]
+    (let [slope  (get slopes iround)
+          offset (get offsets iround)
+          ival   (biginteger ival)
+          r1     (it-> ival
+                   (.multiply ^BigInteger it slope)
+                   (.add ^BigInteger it offset)
+                   (mod/mod-BigInteger it N-max))
+          r2     (cond-it-> r1
+                   shuffle-bits? (shuffle-bits-BigInteger ctx it))]
       r2)))
 
 (s/defn ^:no-doc decrypt-frame :- BigInteger
   [ctx :- tsk/KeyMap
+   iround :- s/Int
    cuid :- s/Int]
-  (with-map-vals ctx [N-max slope slope-inv offset shuffle-bits?]
+  (with-map-vals ctx [N-max slopes-inv offsets shuffle-bits?]
     (when-not (and (<= 0 cuid) (< cuid N-max))
       (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
-    (let [cuid (biginteger cuid)
-          r1   (cond-it-> cuid
-                 shuffle-bits? (unshuffle-bits-BigInteger ctx it))
-          r2   (it-> r1
-                 (.subtract ^BigInteger it ^BigInteger offset)
-                 (.multiply ^BigInteger it ^BigInteger slope-inv)
-                 (mod/mod-BigInteger it N-max))]
+    (let [slope-inv (get slopes-inv iround)
+          offset    (get offsets iround)
+          cuid      (biginteger cuid)
+          r1        (cond-it-> cuid
+                      shuffle-bits? (unshuffle-bits-BigInteger ctx it))
+          r2        (it-> r1
+                      (.subtract ^BigInteger it ^BigInteger offset)
+                      (.multiply ^BigInteger it ^BigInteger slope-inv)
+                      (mod/mod-BigInteger it N-max))]
       r2)))
+
+(s/defn gen-slope :- BigInteger
+  "Generate a positive, odd slope value"
+  [nbits :- s/Int
+   random-gen :- Random]
+  (assert (pos? nbits))
+  (let [bound  (math/pow-BigInteger 2 nbits)
+        result (it-> (dec nbits)
+                 (BigInteger. it random-gen)
+                 (* 2 it)
+                 (inc it)
+                 (biginteger it))]
+    (assert (pos? result))
+    (assert (odd? result))
+    (assert (< result bound))
+    result))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc new-ctx-impl :- tsk/KeyMap
@@ -165,28 +187,16 @@
           ; We want slope & offset to be in the central half of all possible values to
           ; "encourage" lots of bits to flip on each multiply/add operation.
           N-max            (math/pow-BigInteger 2 num-bits)
-          N-half           (.divide N-max (biginteger 2))
-          N-fourth         (.divide N-max (biginteger 4))
 
-          offset           (biginteger
-                             (it-> (.nextDouble random-gen)
-                               (bigdec it)
-                               (* it N-half)
-                               (+ it N-fourth)))
+          offsets          (forv [i (range num-rounds)]
+                             (BigInteger. num-bits random-gen))
+          slopes           (forv [i (range num-rounds)]
+                             (gen-slope num-bits random-gen))
+          slopes-inv       (forv [slope slopes]
+                             (biginteger (mod/modInverse slope N-max)))
 
-          ; ***** MUST BE ODD *****  Thus, it is relatively prime to N-max (power of 2 => even)
-          slope            (biginteger
-                             (it-> (.nextDouble random-gen)
-                               (bigdec it)
-                               (* it N-half)
-                               (+ it N-fourth)
-                               (biginteger it)
-                               (if (even? it) ; ensure it is odd
-                                   (.add it (biginteger 1))
-                                   it)))
-
-          ; compute the "modular inverse" of slope
-          slope-inv        (biginteger (mod/modInverse slope N-max))
+          round-idxs       (vec (range  num-rounds)) ; precompute since used on every call
+          round-idxs-rev   (vec (reverse round-idxs))
 
           ; #todo extract to a function & write unit tests
           ; result is vector of [icrypt iplain] pairs, sorted by icrypt
@@ -205,22 +215,24 @@
       ; sanity checks
       (when-not (<= min-bits num-bits max-bits)
         (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))
-      (assert (biginteger? offset))
-      (assert (biginteger? slope))
-      (when-not (odd? slope) ; odd => relatively prime to 2^N
-        (throw (ex-info "slope failed even test" (vals->map slope))))
+      ; (assert (biginteger? offset))
+      ; (assert (biginteger? slope))
+      #_(when-not (odd? slope) ; odd => relatively prime to 2^N
+          (throw (ex-info "slope failed even test" (vals->map slope))))
 
       (when verbose?
         (spyx num-bits)
         (spyx num-digits-hex)
         (spyx N-max)
-        (spyx [offset (math/BigInteger->binary-str offset)])
-        (spyx [slope (math/BigInteger->binary-str slope)])
+        (spyx offsets)
+        (spyx slopes)
+        (spyx slopes-inv)
         (spyx bit-shuffle-idxs))
 
       (let [ctx-out (glue params
-                      (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max N-fourth
-                        offset slope slope-inv bit-shuffle-idxs))]
+                      (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max
+                        offsets slopes slopes-inv round-idxs round-idxs-rev
+                        bit-shuffle-idxs))]
         ctx-out))))
 
 (s/defn new-ctx :- tsk/KeyMap
@@ -262,15 +274,19 @@
   [ctx :- tsk/KeyMap
    ival :- s/Int]
   ; (prof/with-timer-accum :idx->cuid)
-  (iterate-n (grab :num-rounds ctx)
-    #(encrypt-frame ctx %)
-    (biginteger ival)))
+  (reduce
+    (fn [result round]
+      (encrypt-frame ctx round result))
+    (biginteger ival)
+    (grab :round-idxs ctx)))
 
 (s/defn decrypt :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
   ; (prof/with-timer-accum :cuid->idx)
-  (iterate-n (grab :num-rounds ctx)
-    #(decrypt-frame ctx %)
-    (biginteger cuid)))
+  (reduce
+    (fn [result round]
+      (decrypt-frame ctx round result))
+    (biginteger cuid)
+    (grab :round-idxs-rev ctx)))
 

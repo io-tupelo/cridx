@@ -27,14 +27,16 @@
 (verify
   ; vvv enable to see printout
   (when true
-    (let [ctx (new-ctx {:num-bits   32})]
+    (let [ctx (new-ctx {:num-bits 32})]
+      (spyx ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
-
         (let [idx-vals    (take 32 (range N-max))
               cuid-vals   (mapv #(idx->cuid ctx %) idx-vals)
               idx-decrypt (mapv #(cuid->idx ctx %) cuid-vals)]
           (nl)
-          (println "    idx   CUID         hex          binary                              orig  ")
+          (println (strcat "    idx     CUID        hex"
+                     (repeat 16 \space) "binary"
+                     (repeat 22 \space) "orig"))
           (doseq [[i cuid] (indexed cuid-vals)]
             (when (neg? cuid)
               (throw (ex-info "found-negative" (vals->map cuid))))

@@ -104,12 +104,13 @@
   (when false
     (let [ctx (crypt/new-ctx {:num-bits   32
                               :num-rounds 5})]
+      ; (spyx ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
         ; arg must be in slice 0..(dec N-max)
-        (throws-not? (crypt/encrypt-frame ctx 0))
-        (throws-not? (crypt/encrypt-frame ctx (dec N-max)))
-        (throws? (crypt/encrypt-frame ctx -1))
-        (throws? (crypt/encrypt-frame ctx N-max))
+        (throws-not? (crypt/encrypt-frame ctx 1 0))
+        (throws-not? (crypt/encrypt-frame ctx 1 (dec N-max)))
+        (throws? (crypt/encrypt-frame ctx 1 -1))
+        (throws? (crypt/encrypt-frame ctx 1 N-max))
 
         (let [idx-vals    (take 32 (range N-max))
               cuid-vals   (mapv #(crypt/encrypt ctx %) idx-vals)
@@ -128,16 +129,15 @@
 
   ; Fast coverage tests
   (doseq [nbits (thru 4 12)]
-      (let [ctx (crypt/new-ctx {:num-bits nbits})]
-        (with-map-vals ctx [N-max]
-          (let [idx-vals    (range N-max)
-                cuid-vals   (cp/pmap :builtin #(crypt/encrypt ctx %) idx-vals)
-                idx-decrypt (cp/pmap :builtin #(crypt/decrypt ctx %) cuid-vals)
-                ]
-            (is-set= idx-vals cuid-vals) ; all vals present
-            (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
-            (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
-            ))))
+    (let [ctx (crypt/new-ctx {:num-bits nbits})]
+      (with-map-vals ctx [N-max]
+        (let [idx-vals    (range N-max)
+              cuid-vals   (cp/pmap :builtin #(crypt/encrypt ctx %) idx-vals)
+              idx-decrypt (cp/pmap :builtin #(crypt/decrypt ctx %) cuid-vals)]
+          (is-set= idx-vals cuid-vals) ; all vals present
+          (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
+          (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
+          ))))
 
   ; Slow coverage test (~35 sec)
   (when false
