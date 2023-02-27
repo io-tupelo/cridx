@@ -34,7 +34,7 @@
 
         {:num-bits     <long>  ; REQUIRED:  (minimum: 4): input/output integers in [0..2^n)
          :rand-seed    <long>  ; optional:  encryption key (default: randomized)
-         :num-rounds   <long>  ; optional:  positive int (default: 5)
+         :num-rounds   <long>  ; optional:  positive int (default: 7)
         } "
   [opts :- tsk/KeyMap]
   (s/validate {:num-bits                       s/Int
@@ -54,16 +54,17 @@
 
 ;-----------------------------------------------------------------------------
 ; Timing {:num-rounds 5  :shuffle-bits? false}
-;   32 bits:  10 usec/call
-;   64 bits:  10 usec/call
-;  128 bits:  10 usec/call
-;  256 bits:  11 usec/call
+;   32 bits:  12 usec/call
+;   64 bits:  12 usec/call
+;  128 bits:  12 usec/call
 (s/defn idx->cuid :- BigInteger
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (crypt/encrypt ctx ival ))
+  (prof/with-timer-accum :idx->cuid
+    (crypt/encrypt ctx ival)))
 
 (s/defn cuid->idx :- BigInteger
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
-  (crypt/decrypt ctx cuid))
+  (prof/with-timer-accum :cuid->idx
+    (crypt/decrypt ctx cuid)))

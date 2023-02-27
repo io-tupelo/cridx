@@ -79,11 +79,11 @@
               cuid-vals   (mapv #(crypt/encrypt ctx %) idx-vals)
               idx-decrypt (mapv #(crypt/decrypt ctx %) cuid-vals)]
           (nl)
-          (println "    idx   CUID         hex          binary                              orig  ")
+          (println "    idx      CUID        hex                 binary                    orig")
           (doseq [[i cuid] (indexed cuid-vals)]
             (when (neg? cuid)
               (throw (ex-info "found-negative" (vals->map cuid))))
-            (let [fmt-str (str "%7d  %0" num-digits-dec "d   %s   %s  %7d")
+            (let [fmt-str (str "%7d   %0" num-digits-dec "d   %s   %s  %7d")
                   hex-str (math/BigInteger->hex-str cuid num-digits-hex)
                   bit-str (crypt/int->bitstr cuid num-bits)]
               (println (format fmt-str i cuid hex-str bit-str (nth idx-decrypt i)))))
