@@ -46,8 +46,7 @@
   (let [num-bits (grab :num-bits opts)]
     (when-not (<= min-bits num-bits max-bits)
       (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits)))))
-  (let [params-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
-                        :num-rounds    7
+  (let [params-default {:num-rounds    7
                         :shuffle-bits? false}
         ctx            (crypt/new-ctx (glue params-default opts))]
     ctx))
