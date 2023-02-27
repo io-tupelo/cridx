@@ -48,13 +48,13 @@
 ; simple verification of vec-shuffle
 (verify
   (is= [:b :c :d :a] (crypt/vec-shuffle
-                       [ 1 2 3 0]
+                       [1 2 3 0]
                        [:a :b :c :d]))
   (is= [:d :c :b :a] (crypt/vec-shuffle
-                       [ 3 2 1 0]
+                       [3 2 1 0]
                        [:a :b :c :d]))
   (is= [:c :b :d :a] (crypt/vec-shuffle
-                       [ 2 1 3 0]
+                       [2 1 3 0]
                        [:a :b :c :d]))
   (throws? (crypt/vec-shuffle
              [2 1 0]
@@ -101,7 +101,7 @@
           (is= idx-vals idx-decrypt)))))
 
   ; Fast coverage tests for encrypt/decrypt
-  (doseq [nbits (thru 4  12)]
+  (doseq [nbits (thru 4 12)]
     (let [ctx (crypt/new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
         (let [idx-vals    (range N-max)
@@ -132,32 +132,32 @@
       (let [ctx (crypt/new-ctx {:num-bits 32})]
         (prn :timing-1000-32)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (crypt/decrypt ctx
-            (crypt/encrypt ctx i))))
+          (is= i (crypt/decrypt ctx
+                   (crypt/encrypt ctx i)))))
       (prof/print-profile-stats)
 
       (prof/timer-stats-reset)
       (let [ctx (crypt/new-ctx {:num-bits 64})]
         (prn :timing-1000-64)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (crypt/decrypt ctx
-            (crypt/encrypt ctx i))))
+          (is= i (crypt/decrypt ctx
+                   (crypt/encrypt ctx i)))))
       (prof/print-profile-stats)
 
       (prof/timer-stats-reset)
       (let [ctx (crypt/new-ctx {:num-bits 128})]
         (prn :timing-1000-128)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (crypt/decrypt ctx
-            (crypt/encrypt ctx i))))
+          (is= i (crypt/decrypt ctx
+                   (crypt/encrypt ctx i)))))
       (prof/print-profile-stats)
 
       (prof/timer-stats-reset)
       (let [ctx (crypt/new-ctx {:num-bits 256})]
         (prn :timing-1000-256)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (crypt/decrypt ctx
-            (crypt/encrypt ctx i))))
+          (is= i (crypt/decrypt ctx
+                   (crypt/encrypt ctx i)))))
       (prof/print-profile-stats)
 
       )))

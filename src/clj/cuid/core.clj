@@ -26,7 +26,7 @@
 ;-----------------------------------------------------------------------------
 
 (s/defn new-ctx :- tsk/KeyMap
-  "Creates a new CUID context map. Usage:
+  "Creates a new Cryptographic Unique ID (CUID) context map. Usage:
 
         (new-ctx <params-map>)
 
@@ -39,13 +39,13 @@
   [opts :- tsk/KeyMap]
   (s/validate {:num-bits                       s/Int
                (s/optional-key :rand-seed)     s/Int
-               (s/optional-key :num-rounds)    s/Int}
+               (s/optional-key :num-rounds)    s/Int
+               s/Any s/Any }
     opts)
 
-  (let [num-bits (:num-bits opts)]
-    (when num-bits
-      (when-not (<= min-bits num-bits max-bits)
-        (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits))))))
+  (let [num-bits (grab :num-bits opts)]
+    (when-not (<= min-bits num-bits max-bits)
+      (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits)))))
   (let [params-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
                         :num-rounds    7
                         :shuffle-bits? false}
@@ -58,13 +58,18 @@
 ;   64 bits:  12 usec/call
 ;  128 bits:  12 usec/call
 (s/defn idx->cuid :- BigInteger
+  "Given a context map and an index value [0..2^N), returns the corresponding
+  CUID value (Cryptographic Unique ID), also in [0..2^N). CUID values are guaranteed
+  to be unique for each index and crypographically 'random' within the interval [0..2^N)."
   [ctx :- tsk/KeyMap
    ival :- s/Int]
-  (prof/with-timer-accum :idx->cuid
-    (crypt/encrypt ctx ival)))
+  ; (prof/with-timer-accum :idx->cuid)
+  (crypt/encrypt ctx ival))
 
 (s/defn cuid->idx :- BigInteger
+  "Given a context map and a CUID value (Cryptographic Unique ID) in [0..2^N),
+   returns the corresponding index value, also in [0..2^N)."
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
-  (prof/with-timer-accum :cuid->idx
-    (crypt/decrypt ctx cuid)))
+  ; (prof/with-timer-accum :cuid->idx)
+  (crypt/decrypt ctx cuid))

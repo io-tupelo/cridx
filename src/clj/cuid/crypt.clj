@@ -230,7 +230,8 @@
   (s/validate {:num-bits                       s/Int
                (s/optional-key :rand-seed)     s/Int
                (s/optional-key :num-rounds)    s/Int
-               (s/optional-key :shuffle-bits?) s/Bool}
+               (s/optional-key :shuffle-bits?) s/Bool
+               s/Any s/Any }
     opts)
   (let [opts-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
                       :num-rounds    3
@@ -245,28 +246,32 @@
 ;  128 bits:  10 usec/call
 ;  256 bits:  11 usec/call
 ;
-; Timing {:num-rounds 2  :shuffle-bits? true}
-;   32 bits:  25 usec/call
-;   64 bits:  45 usec/call
-;  128 bits:  80 usec/call
-;  256 bits: 157 usec/call
+; Timing {:num-rounds 3  :shuffle-bits? true}
+;   32 bits:  23 usec/call
+;   64 bits:  35 usec/call
+;  128 bits:  60 usec/call
+;  256 bits: 120 usec/call
 (s/defn encrypt :- BigInteger
+  "Given an encryption context map, encrypts an N-bit integer, returning
+   the N-bit encrypted value."
   [ctx :- tsk/KeyMap
-   ival :- s/Int]
+   int-plain :- s/Int]
   ; (prof/with-timer-accum :idx->cuid)
   (reduce
     (fn [result round]
       (encrypt-frame ctx round result))
-    (biginteger ival)
+    (biginteger int-plain)
     (grab :round-idxs ctx)))
 
 (s/defn decrypt :- BigInteger
+  "Given an encryption context map, decrypts an N-bit integer, returning
+   the N-bit original value."
   [ctx :- tsk/KeyMap
-   cuid :- s/Int]
-  ; (prof/with-timer-accum :cuid->idx)
+   int-crypt :- s/Int]
+  ; (prof/with-timer-accum :int-crypt->idx)
   (reduce
     (fn [result round]
       (decrypt-frame ctx round result))
-    (biginteger cuid)
+    (biginteger int-crypt)
     (grab :round-idxs-rev ctx)))
 

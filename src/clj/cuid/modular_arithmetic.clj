@@ -39,32 +39,39 @@
       (and (zero? x) (zero? y)))))
 
 ;-----------------------------------------------------------------------------
-; shortcuts to aid development & testing
+; shortcuts for quot/mod with different return types
 (s/defn mod-Long :- Long
+  "Computes the mod of two Long numbers, returning a Long."
   [n :- Long
    d :- Long] (clojure.core/mod ^Long n ^Long d))
 
 (s/defn quot-Long :- Long
+  "Computes the quot of two Long numbers, returning a Long."
   [n :- Long
    d :- Long] (clojure.core/quot ^Long n ^Long d))
 
 (s/defn mod-BigInteger :- BigInteger
+  "Computes the mod of two BigInteger numbers, returning a BigInteger."
   [n :- BigInteger
    d :- BigInteger] (.mod ^BigInteger n ^BigInteger d))
 
 (s/defn quot-BigInteger :- BigInteger
+  "Computes the quot of two BigInteger numbers, returning a BigInteger."
   [n :- BigInteger
    d :- BigInteger] (.divide ^BigInteger n ^BigInteger d))
 
 (s/defn mod-BigInt :- BigInt
+  "Computes the mod of two BigInt numbers, returning a BigInt."
   [n :- s/Int
-   d :- s/Int] (mod (bigint n) (bigint d)))
+   d :- s/Int] (mod ^BigInt (bigint n) ^BigInt (bigint d)))
 
 (s/defn quot-BigInt :- BigInt
+  "Computes the quot of two BigInt numbers, returning a BigInt."
   [n :- s/Int
-   d :- s/Int] (quot (bigint n) (bigint d)))
+   d :- s/Int] (quot ^BigInt (bigint n) ^BigInt (bigint d)))
 
 ;-----------------------------------------------------------------------------
+;  shortcuts for modular add/mult with different return types
 (s/defn add-mod-Long :- Long
   "Adds two numbers a and b (mod N)."
   [a :- Long
@@ -132,7 +139,7 @@
 
 (s/defn mod-inverse :- s/Int
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
-  Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
+   Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
   [x :- s/Int
    N :- s/Int]
   (assert (and (pos? x) (pos? N) (< x N)))
@@ -155,5 +162,3 @@
           (if (neg? a)
             (+ a N-orig)
             a))))))
-
-

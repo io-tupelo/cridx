@@ -57,24 +57,24 @@
       (let [ctx (new-ctx {:num-bits 32})]
         (prn :timing-1000-32)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (cuid->idx ctx
-            (idx->cuid ctx i))))
+          (is= i (cuid->idx ctx
+                   (idx->cuid ctx i)))))
       (prof/print-profile-stats)
 
       (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 64})]
         (prn :timing-1000-64)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (cuid->idx ctx
-            (idx->cuid ctx i))))
+          (is= i (cuid->idx ctx
+                   (idx->cuid ctx i)))))
       (prof/print-profile-stats)
 
       (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 128})]
         (prn :timing-1000-128)
         (dotimes [i 1000] ; timing for 1000 CRIDX values
-          (cuid->idx ctx
-            (idx->cuid ctx i))))
+          (is= i (cuid->idx ctx
+                   (idx->cuid ctx i)))))
       (prof/print-profile-stats)
 
       )))
