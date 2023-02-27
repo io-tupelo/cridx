@@ -52,7 +52,7 @@
     ctx))
 
 ;-----------------------------------------------------------------------------
-; Timing {:num-rounds 5  :shuffle-bits? false}
+; Timing {:num-rounds 7  :shuffle-bits? false}
 ;   32 bits:  12 usec/call
 ;   64 bits:  12 usec/call
 ;  128 bits:  12 usec/call
