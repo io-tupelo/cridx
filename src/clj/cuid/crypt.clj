@@ -9,7 +9,7 @@
     [tupelo.string :as str])
   (:import
     [java.util Random]
-    [java.util.function BiFunction]))
+    ))
 
 (def Matrix [[s/Any]])
 (def verbose? false)
@@ -42,9 +42,6 @@
 ;-----------------------------------------------------------------------------
 (def ^:no-doc min-bits 4) ; NOTE! IMPORTANT! 4 bits minimum due to shuffle step
 (def ^:no-doc max-bits 1024) ; No real upper limit.  Just process in blocks if desired.
-
-(def ^:no-doc bi-0 (biginteger 0))
-(def ^:no-doc bi-1 (biginteger 1))
 
 ;-----------------------------------------------------------------------------
 (s/defn int->bitchars :- tsk/Vec ; #todo => tupelo.math

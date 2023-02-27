@@ -2,7 +2,6 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
-    [tupelo.schema :as tsk]
     )
   (:import
     [clojure.lang BigInt]))
