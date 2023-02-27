@@ -49,9 +49,7 @@
           (is= idx-vals idx-decrypt))))))
 
 (verify
-  ; need to uncomment & reformat profile statements in source code to use this
-
-  (when false ; round-trip timing printouts disabled by default
+  (when false ; ***** ENABLE TO SEE TIMING PRINTOUTS *****k
 
     (tsk/with-validation-disabled
 

@@ -13,6 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
+; make sure BigInteger works as expected
 (verify
   (let [bi-five (biginteger 5)]
     ; How does it cost us to cast to BigInteger?
@@ -28,13 +29,23 @@
     (s/validate s/Int bi-five)
     (s/validate s/Int 5)
 
-    ; Make sure it works correctly
+    ; verify `bitstr` gives expected result
     (throws? (crypt/int->bitstr 5 2))
     (is= "101" (crypt/int->bitstr 5 3))
     (is= "0101" (crypt/int->bitstr 5 4))
     (is= "00000101" (crypt/int->bitstr 5 8))))
 
+(verify   ; simple tests
+  (let [times-2 #(* 2 %)]
+    (is= [] (take 0 (range 9)))
+    (is= 1 (crypt/iterate-n 0 times-2 1))
+    (is= 2 (crypt/iterate-n 1 times-2 1))
+    (is= 4 (crypt/iterate-n 2 times-2 1))
+    (is= 8 (crypt/iterate-n 3 times-2 1))
+    (is= 256 (crypt/iterate-n 8 times-2 1))))
+
 ;-----------------------------------------------------------------------------
+; simple verification of vec-shuffle
 (verify
   (is= [:b :c :d :a] (crypt/vec-shuffle
                        [ 1 2 3 0]
@@ -51,7 +62,8 @@
 
 ;-----------------------------------------------------------------------------
 (verify
-  (doseq [num-bits (thru 4 10)]
+  ; fast tests to verify shuffle/unshuffle for BigInteger bits
+  (doseq [num-bits (thru 4 12)]
     (let [ctx (crypt/new-ctx {:num-bits num-bits})]
       (with-map-vals ctx [num-bits N-max bit-shuffle-idxs-plain bit-shuffle-idxs-crypt]
         (let [orig-vals       (range N-max)
@@ -62,9 +74,7 @@
 
 ;-----------------------------------------------------------------------------
 (verify
-
-  ; ***** ENABLE TO SEE PRINTOUT *****
-  (when false
+  (when false ; ***** ENABLE TO SEE PRINTOUT *****
     (let [ctx (crypt/new-ctx {:num-bits   32
                               :num-rounds 5})]
       ; (spyx ctx)
@@ -90,7 +100,7 @@
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
           (is= idx-vals idx-decrypt)))))
 
-  ; Fast coverage tests
+  ; Fast coverage tests for encrypt/decrypt
   (doseq [nbits (thru 4  12)]
     (let [ctx (crypt/new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
@@ -102,7 +112,7 @@
           (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
           ))))
 
-  ; Slow coverage test (~35 sec)
+  ; Slow coverage test (~35 sec).  ***** Enable to run *****
   (when false
     (let [ctx (crypt/new-ctx {:num-bits 20})]
       (with-map-vals ctx [num-bits N-max]
@@ -114,18 +124,7 @@
             (is-set= nums-orig nums-shuffled)))))))
 
 (verify
-  (let [times-2 #(* 2 %)]
-    (is= [] (take 0 (range 9)))
-    (is= 1 (crypt/iterate-n 0 times-2 1))
-    (is= 2 (crypt/iterate-n 1 times-2 1))
-    (is= 4 (crypt/iterate-n 2 times-2 1))
-    (is= 8 (crypt/iterate-n 3 times-2 1))
-    (is= 256 (crypt/iterate-n 8 times-2 1))))
-
-(verify
-  ; need to uncomment & reformat profile statements in source code to use this
-
-  (when false ; round-trip timing printouts disabled by default
+  (when false ; ***** ENABLE TO SEE TIMING PRINTOUTS *****k
 
     (tsk/with-validation-disabled
 

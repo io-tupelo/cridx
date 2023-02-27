@@ -166,7 +166,7 @@
           slopes                 (forv [i (range num-rounds)]
                                    (gen-slope num-bits random-gen))
           slopes-inv             (forv [slope slopes]
-                                   (biginteger (mod/modInverse slope N-max)))
+                                   (biginteger (mod/mod-inverse slope N-max)))
 
           round-idxs             (vec (range num-rounds)) ; precompute since used on every call
           round-idxs-rev         (vec (reverse round-idxs))

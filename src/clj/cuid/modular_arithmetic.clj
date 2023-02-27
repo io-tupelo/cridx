@@ -130,7 +130,7 @@
                   (<= d-ovr-2 it) (- it N))]
     result))
 
-(s/defn modInverse :- s/Int
+(s/defn mod-inverse :- s/Int
   "Computes the 'inverse` y of a number x (mod N), such that `x*y (mod N)` = 1.
   Uses the extended Euclid algorithm (iterative version). Assumes x and N are relatively prime. "
   [x :- s/Int
