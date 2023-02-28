@@ -26,8 +26,7 @@
           )))))
 
 (verify
-  ; ***** ENABLE TO SEE PRINTOUT *****
-  (when false
+  (when false ; ***** ENABLE TO SEE PRINTOUT *****
     (let [ctx (new-ctx {:num-bits 32})]
       ; (spyx ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
@@ -50,9 +49,7 @@
 
 (verify
   (when false ; ***** ENABLE TO SEE TIMING PRINTOUTS *****k
-
     (tsk/with-validation-disabled
-
       (prof/timer-stats-reset)
       (let [ctx (new-ctx {:num-bits 32})]
         (prn :timing-1000-32)
