@@ -71,11 +71,11 @@
 ;-----------------------------------------------------------------------------
 ; #todo: maybe make more general version?
 (s/defn ^:no-doc vec-shuffle :- tsk/Vec
-  [bit-idxs :- [s/Int]
-   vec-orig :- tsk/Vec]
-  (assert (= (count bit-idxs) (count vec-orig)))
-  (forv [idx bit-idxs]
-    (get vec-orig idx ::error-81)))
+  [data :- tsk/Vec
+   idxs :- [s/Int]]
+  (assert (= (count idxs) (count data)))
+  (forv [idx idxs]
+    (nth data idx)))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
@@ -84,7 +84,7 @@
    ival :- s/Int]
   (it-> ival
     (int->bitchars it num-bits)
-    (vec-shuffle bit-shuffle-idxs it)
+    (vec-shuffle it bit-shuffle-idxs)
     (math/binary-chars->BigInteger it)))
 
 ;-----------------------------------------------------------------------------
@@ -92,7 +92,7 @@
   [ctx :- tsk/KeyMap
    iround :- s/Int
    ival :- s/Int]
-  (with-map-vals ctx [num-bits N-max slopes offsets shuffle-bits?  bit-shuffle-idxs-plain]
+  (with-map-vals ctx [num-bits N-max slopes offsets shuffle-bits? bit-shuffle-idxs-plain]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
@@ -228,7 +228,7 @@
                (s/optional-key :rand-seed)     s/Int
                (s/optional-key :num-rounds)    s/Int
                (s/optional-key :shuffle-bits?) s/Bool
-               s/Any s/Any }
+               s/Any                           s/Any}
     opts)
   (let [opts-default {:rand-seed     (Math/abs (.nextLong (Random.))) ; positive for simplicity
                       :num-rounds    3

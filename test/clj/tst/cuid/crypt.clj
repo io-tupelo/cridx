@@ -47,17 +47,17 @@
 ; simple verification of vec-shuffle
 (verify
   (is= [:b :c :d :a] (vec-shuffle
-                       [1 2 3 0]
-                       [:a :b :c :d]))
+                       [:a :b :c :d]
+                       [1 2 3 0]))
   (is= [:d :c :b :a] (vec-shuffle
-                       [3 2 1 0]
-                       [:a :b :c :d]))
+                       [:a :b :c :d]
+                       [3 2 1 0]))
   (is= [:c :b :d :a] (vec-shuffle
-                       [2 1 3 0]
-                       [:a :b :c :d]))
+                       [:a :b :c :d]
+                       [2 1 3 0]))
   (throws? (vec-shuffle
-             [2 1 0]
-             [:a :b :c :d])))
+             [:a :b :c :d]
+             [2 1 0])))
 
 ;-----------------------------------------------------------------------------
 (verify
