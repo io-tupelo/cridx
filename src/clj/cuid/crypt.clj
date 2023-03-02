@@ -74,8 +74,10 @@
   [data :- tsk/Vec
    idxs :- [s/Int]]
   (assert (= (count idxs) (count data)))
-  (forv [idx idxs]
-    (nth data idx)))
+  (let [data (it-> data ; ensure it is a vector for random access performance
+               (not (vector? data)) (vec data))]
+    (forv [idx idxs]
+      (nth data idx))))
 
 ;-----------------------------------------------------------------------------
 (s/defn ^:no-doc shuffle-bits-BigInteger :- BigInteger
