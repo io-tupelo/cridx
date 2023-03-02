@@ -1,5 +1,7 @@
 (ns tst.cuid.crypt
-  (:use cuid.crypt tupelo.core tupelo.test)
+  (:use cuid.crypt
+        tupelo.core
+        tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
     [criterium.core :as crit]
@@ -46,18 +48,10 @@
 ;-----------------------------------------------------------------------------
 ; simple verification of vec-shuffle
 (verify
-  (is= [:b :c :d :a] (vec-shuffle
-                       [:a :b :c :d]
-                       [1 2 3 0]))
-  (is= [:d :c :b :a] (vec-shuffle
-                       [:a :b :c :d]
-                       [3 2 1 0]))
-  (is= [:c :b :d :a] (vec-shuffle
-                       [:a :b :c :d]
-                       [2 1 3 0]))
-  (throws? (vec-shuffle
-             [:a :b :c :d]
-             [2 1 0])))
+  (is= [:b :c :d :a] (vec-shuffle [:a :b :c :d] [1 2 3 0]))
+  (is= [:d :c :b :a] (vec-shuffle [:a :b :c :d] [3 2 1 0]))
+  (is= [:c :b :d :a] (vec-shuffle [:a :b :c :d] [2 1 3 0]))
+  (throws? (vec-shuffle [:a :b :c :d] [2 1 0])))
 
 ;-----------------------------------------------------------------------------
 (verify
@@ -75,7 +69,7 @@
 (verify
   (when false ; ***** ENABLE TO SEE PRINTOUT *****
     (let [ctx (new-ctx {:num-bits   32
-                              :num-rounds 5})]
+                        :num-rounds 5})]
       ; (spyx ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
         ; arg must be in slice 0..(dec N-max)
