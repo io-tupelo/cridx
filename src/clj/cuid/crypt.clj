@@ -60,6 +60,11 @@
   (str/join (int->bitchars ival bits-width)))
 
 (s/defn iterate-n :- s/Any
+  "Calls `(iterate f x)` n times, returning that result (indexed from 0); i.e.
+        n=0   => x
+        n=1   => (f x)
+        n=2   => (f (f x))
+  "
   [N :- s/Int
    f :- tsk/Fn
    x :- s/Any]
@@ -71,9 +76,10 @@
 ;-----------------------------------------------------------------------------
 ; #todo: maybe make more general version?
 (s/defn ^:no-doc vec-shuffle :- tsk/Vec
+  "Given a data vector, returns a new vector consisting of elements from the supplied indexs."
   [data :- tsk/Vec
    idxs :- [s/Int]]
-  (assert (= (count idxs) (count data)))
+  (assert (= (count idxs) (count data))) ; #todo maybe remove this restriction?
   (let [data (it-> data ; ensure it is a vector for random access performance
                (not (vector? data)) (vec data))]
     (forv [idx idxs]
@@ -179,10 +185,9 @@
                                      (reverse ibit-seq)
                                      ibit-seq))
           bit-shuffle-idxs-plain (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-          bit-shuffle-idxs-crypt (it-> (indexed bit-shuffle-idxs-plain)
-                                   (sort-by second it)
-                                   (mapv first it))
-          ;-----------------------------------------------------------------------------
+          bit-shuffle-idxs-crypt (vec (it-> (indexed bit-shuffle-idxs-plain)
+                                        (sort-by second it)
+                                        (mapv first it)))
           ]
       (assert (= (set (range num-bits)) (set bit-shuffle-idxs-plain)))
       (assert (= (set (range num-bits)) (set bit-shuffle-idxs-crypt)))
