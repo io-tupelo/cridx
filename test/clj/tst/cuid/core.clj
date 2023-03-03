@@ -1,10 +1,8 @@
 (ns tst.cuid.core
-  (:use cuid.core
-        tupelo.core
-        tupelo.test)
+  (:use cuid.core tupelo.core tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
-    [cuid.crypt :as crypt]
+    [cuid.prng :as prng]
     [tupelo.math :as math]
     [tupelo.profile :as prof]
     [tupelo.schema :as tsk]
@@ -19,10 +17,10 @@
       (with-map-vals ctx [N-max]
         (let [idx-vals    (range N-max)
               cuid-vals   (cp/pmap :builtin #(idx->cuid ctx %) idx-vals)
-              idx-decrypt (cp/pmap :builtin #(cuid->idx ctx %) cuid-vals)]
+              idx-deprng (cp/pmap :builtin #(cuid->idx ctx %) cuid-vals)]
           (is-set= idx-vals cuid-vals) ; all vals present
           (isnt= idx-vals cuid-vals) ; but not same order (random chance: 1 in N!)
-          (is= idx-vals idx-decrypt) ; decryption recovers original vals, in order
+          (is= idx-vals idx-deprng) ; recovers original vals, in order
           )))))
 
 (verify
@@ -32,7 +30,7 @@
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
         (let [idx-vals    (take 32 (range N-max))
               cuid-vals   (mapv #(idx->cuid ctx %) idx-vals)
-              idx-decrypt (mapv #(cuid->idx ctx %) cuid-vals)]
+              idx-deprng (mapv #(cuid->idx ctx %) cuid-vals)]
           (nl)
           (println (strcat "    idx      CUID        hex"
                      (repeat 16 \space) "binary"
@@ -42,10 +40,10 @@
               (throw (ex-info "found-negative" (vals->map cuid))))
             (let [fmt-str (str "%7d   %0" num-digits-dec "d   %s   %s  %7d")
                   hex-str (math/BigInteger->hex-str cuid num-digits-hex)
-                  bit-str (crypt/int->bitstr cuid num-bits)]
-              (println (format fmt-str i cuid hex-str bit-str (nth idx-decrypt i)))))
+                  bit-str (prng/int->bitstr cuid num-bits)]
+              (println (format fmt-str i cuid hex-str bit-str (nth idx-deprng i)))))
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)
-          (is= idx-vals idx-decrypt))))))
+          (is= idx-vals idx-deprng))))))
 
 (verify
   (when false ; ***** ENABLE TO SEE TIMING PRINTOUTS *****k

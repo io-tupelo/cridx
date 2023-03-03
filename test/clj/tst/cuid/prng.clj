@@ -1,5 +1,5 @@
-(ns tst.cuid.crypt
-  (:use cuid.crypt tupelo.core tupelo.test)
+(ns tst.cuid.prng
+  (:use cuid.prng tupelo.core tupelo.test)
   (:require
     [com.climate.claypoole :as cp]
     [criterium.core :as crit]

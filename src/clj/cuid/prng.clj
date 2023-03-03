@@ -1,4 +1,4 @@
-(ns cuid.crypt
+(ns cuid.prng
   (:use tupelo.core)
   (:require
     [schema.core :as s]
@@ -258,7 +258,7 @@
   "Given an PRNG context, converts an N-bit index to a unique N-bit 'randomized' value."
   [ctx :- tsk/KeyMap
    idx :- s/Int]
-  ; (prof/with-timer-accum :idx->cuid)
+  ; (prof/with-timer-accum :randomize)
   (reduce
     (fn [result round]
       (randomize-frame ctx round result))
@@ -269,7 +269,7 @@
   "Given an PRNG context, reverts an N-bit 'randomized' integer to the original N-bit index."
   [ctx :- tsk/KeyMap
    prng-val :- s/Int]
-  ; (prof/with-timer-accum :int-rand-value->idx)
+  ; (prof/with-timer-accum :derandomize)
   (reduce
     (fn [result round]
       (derandomize-frame ctx round result))

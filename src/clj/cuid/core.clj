@@ -2,7 +2,7 @@
   (:use tupelo.core)
   (:require
     [schema.core :as s]
-    [cuid.crypt :as crypt]
+    [cuid.prng :as prng]
     [tupelo.profile :as prof]
     [tupelo.schema :as tsk])
   (:import
@@ -33,7 +33,7 @@
   where <params-map> is of the form:
 
         {:num-bits     <long>  ; REQUIRED:  (minimum: 4): input/output integers in [0..2^n)
-         :rand-seed    <long>  ; optional:  encryption key (default: randomized)
+         :rand-seed    <long>  ; optional:  PRNG seed (default: randomized)
          :num-rounds   <long>  ; optional:  positive int (default: 7)
         } "
   [opts :- tsk/KeyMap]
@@ -48,7 +48,7 @@
       (throw (ex-info "num-bits out of range " (vals->map num-bits min-bits max-bits)))))
   (let [params-default {:num-rounds    7
                         :shuffle-bits? false}
-        ctx            (crypt/new-ctx (glue params-default opts))]
+        ctx            (prng/new-ctx (glue params-default opts))]
     ctx))
 
 ;-----------------------------------------------------------------------------
@@ -59,11 +59,11 @@
 (s/defn idx->cuid :- BigInteger
   "Given a context map and an index value [0..2^N), returns the corresponding
   CUID value (Cryptographic Unique ID), also in [0..2^N). CUID values are guaranteed
-  to be unique for each index and crypographically 'random' within the interval [0..2^N)."
+  to be unique for each index and pseudo-random within the interval [0..2^N)."
   [ctx :- tsk/KeyMap
    ival :- s/Int]
   ; (prof/with-timer-accum :idx->cuid)
-  (crypt/randomize ctx ival))
+  (prng/randomize ctx ival))
 
 (s/defn cuid->idx :- BigInteger
   "Given a context map and a CUID value (Cryptographic Unique ID) in [0..2^N),
@@ -71,4 +71,4 @@
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
   ; (prof/with-timer-accum :cuid->idx)
-  (crypt/derandomize ctx cuid))
+  (prng/derandomize ctx cuid))
