@@ -96,11 +96,11 @@
     (math/binary-chars->BigInteger it)))
 
 ;-----------------------------------------------------------------------------
-(s/defn ^:no-doc encrypt-frame :- BigInteger
+(s/defn ^:no-doc randomize-frame :- BigInteger
   [ctx :- tsk/KeyMap
    iround :- s/Int
    ival :- s/Int]
-  (with-map-vals ctx [num-bits N-max slopes offsets shuffle-bits? bit-shuffle-idxs-plain]
+  (with-map-vals ctx [num-bits N-max slopes offsets shuffle-bits? bit-shuffle-idxs-orig]
     (when-not (and (<= 0 ival) (< ival N-max))
       (throw (ex-info "ival out of range" (vals->map ival N-max))))
     ; calculate mod( y = mx + b ), then shuffle bits
@@ -112,21 +112,21 @@
                    (.add ^BigInteger it offset)
                    (mod/mod-BigInteger it N-max))
           r2     (cond-it-> r1
-                   shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-plain it))]
+                   shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-orig it))]
       r2)))
 
-(s/defn ^:no-doc decrypt-frame :- BigInteger
+(s/defn ^:no-doc derandomize-frame :- BigInteger
   [ctx :- tsk/KeyMap
    iround :- s/Int
    cuid :- s/Int]
-  (with-map-vals ctx [num-bits N-max slopes-inv offsets shuffle-bits? bit-shuffle-idxs-crypt]
+  (with-map-vals ctx [num-bits N-max slopes-inv offsets shuffle-bits? bit-shuffle-idxs-prng]
     (when-not (and (<= 0 cuid) (< cuid N-max))
       (throw (ex-info "cuid out of range" (vals->map cuid N-max))))
     (let [slope-inv (get slopes-inv iround)
           offset    (get offsets iround)
           cuid      (biginteger cuid)
           r1        (cond-it-> cuid
-                      shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-crypt it))
+                      shuffle-bits? (shuffle-bits-BigInteger num-bits bit-shuffle-idxs-prng it))
           r2        (it-> r1
                       (.subtract ^BigInteger it ^BigInteger offset)
                       (.multiply ^BigInteger it ^BigInteger slope-inv)
@@ -184,13 +184,13 @@
                                    (if (odd? irow)
                                      (reverse ibit-seq)
                                      ibit-seq))
-          bit-shuffle-idxs-plain (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
-          bit-shuffle-idxs-crypt (vec (it-> (indexed bit-shuffle-idxs-plain)
+          bit-shuffle-idxs-orig (vec (apply interleave-all bit-idxs-2d-rev)) ; example [0 7 8 15 1 6 9 14 2 5 10 13 3 4 11 12]
+          bit-shuffle-idxs-prng (vec (it-> (indexed bit-shuffle-idxs-orig)
                                         (sort-by second it)
                                         (mapv first it)))
           ]
-      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-plain)))
-      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-crypt)))
+      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-orig)))
+      (assert (= (set (range num-bits)) (set bit-shuffle-idxs-prng)))
 
       ;-----------------------------------------------------------------------------
       ; sanity checks
@@ -208,26 +208,26 @@
         (spyx offsets)
         (spyx slopes)
         (spyx slopes-inv)
-        (spyx bit-shuffle-idxs-plain)
-        (spyx bit-shuffle-idxs-crypt)
+        (spyx bit-shuffle-idxs-orig)
+        (spyx bit-shuffle-idxs-prng)
         )
 
       (let [ctx-out (glue params
                       (vals->map num-bits num-rounds num-digits-dec num-digits-hex N-max
                         offsets slopes slopes-inv round-idxs round-idxs-rev
-                        bit-shuffle-idxs-plain bit-shuffle-idxs-crypt
+                        bit-shuffle-idxs-orig bit-shuffle-idxs-prng
                         ))]
         ctx-out))))
 
 (s/defn new-ctx :- tsk/KeyMap
-  "Creates a new encryption context map. Usage:
+  "Creates a new PRNG context map. Usage:
 
         (new-ctx <params-map>)
 
    where <params-map> is of the form:
 
         {:num-bits     <long>  ; REQUIRED:  (minimum: 4): input/output integers in [0..2^n)
-         :rand-seed    <long>  ; optional:  encryption key (default: randomized)
+         :rand-seed    <long>  ; optional:  PRNG seed (default: randomized)
          :num-rounds   <long>  ; optional:  positive int (default: 3)
         } "
   [opts :- tsk/KeyMap]
@@ -254,27 +254,25 @@
 ;   64 bits:  35 usec/call
 ;  128 bits:  60 usec/call
 ;  256 bits: 120 usec/call
-(s/defn encrypt :- BigInteger
-  "Given an encryption context map, encrypts an N-bit integer, returning
-   the N-bit encrypted value."
+(s/defn randomize :- BigInteger
+  "Given an PRNG context, converts an N-bit index to a unique N-bit 'randomized' value."
   [ctx :- tsk/KeyMap
-   int-plain :- s/Int]
+   idx :- s/Int]
   ; (prof/with-timer-accum :idx->cuid)
   (reduce
     (fn [result round]
-      (encrypt-frame ctx round result))
-    (biginteger int-plain)
+      (randomize-frame ctx round result))
+    (biginteger idx)
     (grab :round-idxs ctx)))
 
-(s/defn decrypt :- BigInteger
-  "Given an encryption context map, decrypts an N-bit integer, returning
-   the N-bit original value."
+(s/defn derandomize :- BigInteger
+  "Given an PRNG context, reverts an N-bit 'randomized' integer to the original N-bit index."
   [ctx :- tsk/KeyMap
-   int-crypt :- s/Int]
-  ; (prof/with-timer-accum :int-crypt->idx)
+   prng-val :- s/Int]
+  ; (prof/with-timer-accum :int-rand-value->idx)
   (reduce
     (fn [result round]
-      (decrypt-frame ctx round result))
-    (biginteger int-crypt)
+      (derandomize-frame ctx round result))
+    (biginteger prng-val)
     (grab :round-idxs-rev ctx)))
 

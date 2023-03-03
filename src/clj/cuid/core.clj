@@ -63,7 +63,7 @@
   [ctx :- tsk/KeyMap
    ival :- s/Int]
   ; (prof/with-timer-accum :idx->cuid)
-  (crypt/encrypt ctx ival))
+  (crypt/randomize ctx ival))
 
 (s/defn cuid->idx :- BigInteger
   "Given a context map and a CUID value (Cryptographic Unique ID) in [0..2^N),
@@ -71,4 +71,4 @@
   [ctx :- tsk/KeyMap
    cuid :- s/Int]
   ; (prof/with-timer-accum :cuid->idx)
-  (crypt/decrypt ctx cuid))
+  (crypt/derandomize ctx cuid))
