@@ -11,9 +11,6 @@
     [java.util Random]
     ))
 
-(def Matrix [[s/Any]])
-(def verbose? false)
-
 ;---------------------------------------------------------------------------------------------------
 ; :timing-1000-128 {:num-rounds 5  :shuffle-bits? false}
 ;
@@ -201,7 +198,7 @@
       #_(when-not (odd? slope) ; odd => relatively prime to 2^N
           (throw (ex-info "slope failed even test" (vals->map slope))))
 
-      (when verbose?
+      (when false ; ***** ENABLE TO SEE PRINTOUT *****
         (spyx num-bits)
         (spyx num-digits-hex)
         (spyx N-max)
