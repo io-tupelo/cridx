@@ -15,8 +15,8 @@
   (doseq [nbits (thru 4 12)]
     (let [ctx (new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
-        (let [idx-vals    (range N-max)
-              cuid-vals   (cp/pmap :builtin #(idx->cuid ctx %) idx-vals)
+        (let [idx-vals   (range N-max)
+              cuid-vals  (cp/pmap :builtin #(idx->cuid ctx %) idx-vals)
               idx-deprng (cp/pmap :builtin #(cuid->idx ctx %) cuid-vals)]
           (is-set= idx-vals cuid-vals) ; all vals present
           (isnt= idx-vals cuid-vals) ; but not same order (random chance: 1 in N!)
@@ -28,8 +28,8 @@
     (let [ctx (new-ctx {:num-bits 32})]
       ; (spyx ctx)
       (with-map-vals ctx [num-bits N-max num-digits-dec num-digits-hex]
-        (let [idx-vals    (take 32 (range N-max))
-              cuid-vals   (mapv #(idx->cuid ctx %) idx-vals)
+        (let [idx-vals   (take 32 (range N-max))
+              cuid-vals  (mapv #(idx->cuid ctx %) idx-vals)
               idx-deprng (mapv #(cuid->idx ctx %) cuid-vals)]
           (nl)
           (println (strcat "    idx      CUID        hex"

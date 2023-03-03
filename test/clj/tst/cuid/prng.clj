@@ -75,8 +75,8 @@
         (throws? (randomize-frame ctx 1 -1))
         (throws? (randomize-frame ctx 1 N-max))
 
-        (let [idx-vals    (take 32 (range N-max))
-              cuid-vals   (mapv #(randomize ctx %) idx-vals)
+        (let [idx-vals   (take 32 (range N-max))
+              cuid-vals  (mapv #(randomize ctx %) idx-vals)
               idx-deprng (mapv #(derandomize ctx %) cuid-vals)]
           (nl)
           (println "    idx      CUID        hex                 binary                    orig")
@@ -94,8 +94,8 @@
   (doseq [nbits (thru 4 12)]
     (let [ctx (new-ctx {:num-bits nbits})]
       (with-map-vals ctx [N-max]
-        (let [idx-vals    (range N-max)
-              cuid-vals   (cp/pmap :builtin #(randomize ctx %) idx-vals)
+        (let [idx-vals   (range N-max)
+              cuid-vals  (cp/pmap :builtin #(randomize ctx %) idx-vals)
               idx-deprng (cp/pmap :builtin #(derandomize ctx %) cuid-vals)]
           (is-set= idx-vals cuid-vals) ; all vals present
           (isnt= idx-vals cuid-vals) ; but not same order (random chance 1 in N!)

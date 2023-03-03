@@ -37,10 +37,10 @@
          :num-rounds   <long>  ; optional:  positive int (default: 7)
         } "
   [opts :- tsk/KeyMap]
-  (s/validate {:num-bits                       s/Int
-               (s/optional-key :rand-seed)     s/Int
-               (s/optional-key :num-rounds)    s/Int
-               s/Any s/Any }
+  (s/validate {:num-bits                    s/Int
+               (s/optional-key :rand-seed)  s/Int
+               (s/optional-key :num-rounds) s/Int
+               s/Any                        s/Any}
     opts)
 
   (let [num-bits (grab :num-bits opts)]
